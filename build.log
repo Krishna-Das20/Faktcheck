@@ -1,0 +1,88 @@
+﻿
+> faktcheck@0.1.0 build C:\Users\KIIT\Downloads\Koding\faktcheck
+> next build
+
+Γû▓ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+node.exe : Turbopack build encountered 2 
+warnings:
+At 
+C:\Users\KIIT\AppData\Roaming\npm\pnpm.ps1:24 
+char:5
++     & "node$exe"  
+"$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Tu 
+   rbopack build encountered 2 warnings::Strin  
+  g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+[next]/internal/font/google/fira_code_a166c59a.m
+odule.css
+Error while requesting resource
+There was an issue establishing a connection 
+while requesting https://fonts.googleapis.com/cs
+s2?family=Fira+Code:wght@300..700&display=swap
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/fira_code_a166c5
+9a.module.css
+    [next]/internal/font/google/fira_code_a166c5
+9a.js
+    ./src/app/layout.tsx
+
+
+[next]/internal/font/google/inter_c15e96cb.modul
+e.css
+Error while requesting resource
+There was an issue establishing a connection 
+while requesting https://fonts.googleapis.com/cs
+s2?family=Inter:wght@100..900&display=swap
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/inter_c15e96cb.m
+odule.css
+    
+[next]/internal/font/google/inter_c15e96cb.js
+    ./src/app/layout.tsx
+
+
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+[next]/internal/font/google/fira_code_a166c59a.m
+odule.css
+next/font: error:
+Failed to fetch `Fira Code` from Google Fonts.
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/fira_code_a166c5
+9a.module.css
+    [next]/internal/font/google/fira_code_a166c5
+9a.js
+    ./src/app/layout.tsx
+
+
+[next]/internal/font/google/inter_c15e96cb.modul
+e.css
+next/font: error:
+Failed to fetch `Inter` from Google Fonts.
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/inter_c15e96cb.m
+odule.css
+    
+[next]/internal/font/google/inter_c15e96cb.js
+    ./src/app/layout.tsx
+
+
+    at ignore-listed frames
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

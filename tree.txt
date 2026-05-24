@@ -1,0 +1,163 @@
+﻿Folder PATH listing for volume Windows
+Volume serial number is B239-325F
+C:\USERS\KIIT\DOWNLOADS\KODING\FAKTCHECK\SRC
+ª   proxy.ts
+ª   
++---app
+ª   ª   favicon.ico
+ª   ª   globals.css
+ª   ª   layout.tsx
+ª   ª   page.tsx
+ª   ª   
+ª   +---(admin)
+ª   ª       layout.tsx
+ª   ª       
+ª   +---(auth)
+ª   ª   ª   layout.tsx
+ª   ª   ª   
+ª   ª   +---forgot-password
+ª   ª   ª       page.tsx
+ª   ª   ª       
+ª   ª   +---login
+ª   ª   ª       page.tsx
+ª   ª   ª       
+ª   ª   +---register
+ª   ª   ª       page.tsx
+ª   ª   ª       
+ª   ª   +---reset-password
+ª   ª   ª       page.tsx
+ª   ª   ª       
+ª   ª   +---verify-otp
+ª   ª           page.tsx
+ª   ª           
+ª   +---(main)
+ª   ª       layout.tsx
+ª   ª       
+ª   +---api
+ª   ª   +---auth
+ª   ª   ª   +---forgot-password
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---google
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---login
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---me
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---resend-otp
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---reset-password
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---send-otp
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---verify-otp
+ª   ª   ª           route.ts
+ª   ª   ª           
+ª   ª   +---coding
+ª   ª   ª   +---contest
+ª   ª   ª   ª   +---[contestId]
+ª   ª   ª   ª           route.ts
+ª   ª   ª   ª           
+ª   ª   ª   +---library
+ª   ª   ª           route.ts
+ª   ª   ª           
+ª   ª   +---contests
+ª   ª   ª   ª   route.ts
+ª   ª   ª   ª   
+ª   ª   ª   +---admin
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---my
+ª   ª   ª   ª       route.ts
+ª   ª   ª   ª       
+ª   ª   ª   +---[id]
+ª   ª   ª       ª   route.ts
+ª   ª   ª       ª   
+ª   ª   ª       +---emergency-save
+ª   ª   ª       ª       route.ts
+ª   ª   ª       ª       
+ª   ª   ª       +---register
+ª   ª   ª       ª       route.ts
+ª   ª   ª       ª       
+ª   ª   ª       +---save-progress
+ª   ª   ª       ª       route.ts
+ª   ª   ª       ª       
+ª   ª   ª       +---start
+ª   ª   ª       ª       route.ts
+ª   ª   ª       ª       
+ª   ª   ª       +---submit
+ª   ª   ª       ª       route.ts
+ª   ª   ª       ª       
+ª   ª   ª       +---violation
+ª   ª   ª               route.ts
+ª   ª   ª               
+ª   ª   +---leaderboard
+ª   ª   ª   +---[contestId]
+ª   ª   ª           route.ts
+ª   ª   ª           
+ª   ª   +---mcqs
+ª   ª   ª   +---contest
+ª   ª   ª   ª   +---[contestId]
+ª   ª   ª   ª           route.ts
+ª   ª   ª   ª           
+ª   ª   ª   +---library
+ª   ª   ª           route.ts
+ª   ª   ª           
+ª   ª   +---rooms
+ª   ª       ª   route.ts
+ª   ª       ª   
+ª   ª       +---join
+ª   ª       ª       route.ts
+ª   ª       ª       
+ª   ª       +---[id]
+ª   ª       ª       route.ts
+ª   ª       ª       
+ª   ª       +---[roomId]
+ª   ª           +---announcements
+ª   ª                   route.ts
+ª   ª                   
+ª   +---contest
++---components
+ª   +---common
+ª   ª       Footer.tsx
+ª   ª       Loader.tsx
+ª   ª       Navbar.tsx
+ª   ª       
+ª   +---contest
+ª   +---ui
++---context
+ª       AuthContext.tsx
+ª       
++---lib
+    ª   api-auth.ts
+    ª   api-utils.ts
+    ª   auth.ts
+    ª   db.ts
+    ª   email.ts
+    ª   
+    +---models
+            Announcement.ts
+            CodingProblem.ts
+            Contest.ts
+            ContestCodingProblem.ts
+            ContestMCQ.ts
+            ContestProgress.ts
+            ContestRegistration.ts
+            Form.ts
+            FormSubmission.ts
+            index.ts
+            MCQ.ts
+            MCQSubmission.ts
+            OTP.ts
+            Result.ts
+            Room.ts
+            Submission.ts
+            User.ts
+            Violation.ts
+            
