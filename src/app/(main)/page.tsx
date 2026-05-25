@@ -76,6 +76,25 @@ export default function HomePage() {
 
   return (
     <div className="page-shell relative overflow-hidden pt-0">
+      {/* Custom Animation Styles for Background Blobs */}
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 8s infinite ease-in-out;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
+
       {/* Global Background Effects */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div
@@ -94,12 +113,10 @@ export default function HomePage() {
         {/* ── HERO SECTION ── */}
         <div className="relative mt-2 overflow-hidden rounded-[2.5rem] px-6 py-8 sm:px-10 sm:py-12 lg:px-16 lg:py-16">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                background:
-                  "radial-gradient(circle at 30% 20%, rgba(255,107,53,0.3), transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,107,53,0.15), transparent 50%)",
-              }}
+            <img
+              src="/assets/herobg.png"
+              alt=""
+              className="home-hero-image absolute inset-0 h-full w-full object-cover object-center opacity-[0.3] sm:opacity-[0.38]"
             />
             <div className="home-hero-overlay absolute inset-0" />
           </div>
@@ -243,12 +260,10 @@ export default function HomePage() {
         {/* ── FEATURES SECTION ── */}
         <div className="relative mt-8 overflow-hidden rounded-[2.5rem] px-4 py-8 sm:px-8 sm:py-16">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                background:
-                  "radial-gradient(circle at 50% 0%, rgba(255,107,53,0.2), transparent 40%)",
-              }}
+            <img
+              src="/assets/herobg.png"
+              alt=""
+              className="home-secondary-image absolute inset-0 h-full w-full object-cover object-center opacity-[0.08] sm:opacity-[0.12]"
             />
             <div className="home-secondary-overlay absolute inset-0" />
           </div>
@@ -321,12 +336,11 @@ export default function HomePage() {
             backgroundColor: "rgb(var(--color-panel-muted) / 0.88)",
           }}
         >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-10"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 50%, rgba(255,107,53,0.2), transparent 50%)",
-            }}
+          <img
+            src="/assets/herobg.png"
+            alt=""
+            aria-hidden="true"
+            className="home-cta-image pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-[0.08] sm:opacity-[0.12]"
           />
           <div className="home-cta-overlay pointer-events-none absolute inset-0" />
           <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center gap-8">

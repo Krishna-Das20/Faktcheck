@@ -168,6 +168,33 @@ export default function Navbar() {
                   <span className="text-strong">Check</span>
                 </span>
               </Link>
+
+              <a
+                href="https://fedkiit.com"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 rounded-full px-1 py-1 transition-colors hover:opacity-80"
+                aria-label="Open fedkiit.com"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-ui">
+                  by
+                </span>
+                <span
+                  className="inline-flex items-center justify-center overflow-hidden rounded-full"
+                  style={{
+                    height: isCompact ? "1.6rem" : "1.9rem",
+                    width: isCompact ? "1.6rem" : "1.9rem",
+                    border: "1px solid rgb(var(--color-border) / 0.55)",
+                    backgroundColor: "rgb(var(--color-panel-muted) / 0.7)",
+                  }}
+                >
+                  <img
+                    src="/assets/fedlogo.png"
+                    alt="FED logo"
+                    className="h-[78%] w-[78%] object-contain"
+                  />
+                </span>
+              </a>
             </div>
           </div>
 
