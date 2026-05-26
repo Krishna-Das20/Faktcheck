@@ -80,14 +80,12 @@ function ThemeToggle() {
 }
 
 export default function Navbar() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, isAdminOrOrganiser } = useAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
 
   const isAuthenticated = !!user;
-  const isAdmin = user?.role === "ADMIN";
-  const isOrganiser = user?.role === "ORGANISER" || isAdmin;
   const userLabel = user?.name || user?.email || "Account";
 
   const handleLogout = () => {
@@ -222,7 +220,7 @@ export default function Navbar() {
               />
             ) : isAuthenticated ? (
               <div className="flex items-center gap-2">
-                {isOrganiser && (
+                {isAdminOrOrganiser && (
                   <Link
                     href="/admin/dashboard"
                     className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-muted-ui transition-colors hover:text-strong"
