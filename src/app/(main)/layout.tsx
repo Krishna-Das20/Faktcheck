@@ -1,5 +1,6 @@
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
+import OnboardingWrapper from "@/components/common/OnboardingWrapper";
 
 /**
  * (main) route group layout — With Navbar + Footer.
@@ -11,6 +12,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <OnboardingWrapper />
     </div>
   );
 }
