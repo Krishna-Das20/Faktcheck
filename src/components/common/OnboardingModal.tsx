@@ -98,7 +98,7 @@ export default function OnboardingModal({ isOpen = false }: { isOpen?: boolean }
 
     try {
       setSaving(true);
-      const res = await fetch("/api/auth/profile", {
+      const res = await fetch("/api/auth/me", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
