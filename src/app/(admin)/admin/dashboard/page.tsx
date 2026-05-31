@@ -12,16 +12,15 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
-  const { user, token } = useAuth();
+  const { user, token, isAdmin, isAdminOrOrganiser } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role === "ADMIN";
 
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalContests: 0, liveContests: 0, totalParticipants: 0, upcomingContests: 0 });
 
   useEffect(() => {
-    if (user?.role !== "ADMIN" && user?.role !== "ORGANISER") {
+    if (!isAdminOrOrganiser) {
       toast.error("Access denied");
       router.push("/");
       return;

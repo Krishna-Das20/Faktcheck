@@ -11,7 +11,7 @@ const inputStyle = { background: "var(--background-secondary)", color: "var(--fo
 
 export default function ManageMCQPage() {
   const { contestId } = useParams<{ contestId: string }>();
-  const { token, user } = useAuth();
+  const { token, user, isAdmin } = useAuth();
   const router = useRouter();
   const [mcqs, setMcqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +29,6 @@ export default function ManageMCQPage() {
   const [selectedLibraryMcqs, setSelectedLibraryMcqs] = useState<string[]>([]);
   const [libraryFilter, setLibraryFilter] = useState({ category: "", search: "" });
   const [libraryLoading, setLibraryLoading] = useState(false);
-
-  const isAdmin = user?.role === "ADMIN";
 
   const defaultForm = {
     question: "", options: [{ text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }],

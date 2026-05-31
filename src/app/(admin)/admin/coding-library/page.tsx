@@ -20,8 +20,7 @@ const CODING_CATEGORIES = ["GENERAL", "DSA", "ALGORITHMS", "DATABASE", "SYSTEM_D
 const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"];
 
 export default function CodingLibraryPage() {
-  const { user, token } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const { user, token, isAdmin } = useAuth();
   const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

@@ -11,7 +11,7 @@ const inputStyle = { background: "var(--background-secondary)", color: "var(--fo
 
 export default function ManageCodingPage() {
   const { contestId } = useParams<{ contestId: string }>();
-  const { token, user } = useAuth();
+  const { token, user, isAdmin } = useAuth();
   const router = useRouter();
   const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +29,6 @@ export default function ManageCodingPage() {
   const [selectedLibraryProblems, setSelectedLibraryProblems] = useState<string[]>([]);
   const [libraryFilter, setLibraryFilter] = useState({ category: "", search: "" });
   const [libraryLoading, setLibraryLoading] = useState(false);
-
-  const isAdmin = user?.role === "ADMIN";
 
   const defaultForm = {
     title: "", description: "", category: "", difficulty: "MEDIUM", score: 100,

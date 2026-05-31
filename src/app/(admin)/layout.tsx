@@ -12,20 +12,20 @@ import { useEffect } from "react";
  * Redirects non-admin/non-organiser users.
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdminOrOrganiser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || (user.role !== "ADMIN" && user.role !== "ORGANISER"))) {
+    if (!loading && (!user || !isAdminOrOrganiser)) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isAdminOrOrganiser]);
 
   if (loading) {
     return <Loader fullScreen />;
   }
 
-  if (!user || (user.role !== "ADMIN" && user.role !== "ORGANISER")) {
+  if (!user || !isAdminOrOrganiser) {
     return null;
   }
 

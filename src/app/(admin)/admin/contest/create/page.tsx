@@ -17,7 +17,7 @@ interface SectionConfig {
 
 export default function CreateContestPage() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, isAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
     title: "", description: "", startTime: "", endTime: "",
@@ -106,7 +106,7 @@ export default function CreateContestPage() {
       });
       const data = await res.json();
       if (data.success || res.ok) {
-        const msg = user?.role === "ADMIN" ? "Contest created!" : "Contest created & submitted for approval!";
+        const msg = isAdmin ? "Contest created!" : "Contest created & submitted for approval!";
         toast.success(msg);
         router.push("/admin/dashboard");
       } else toast.error(data.message || "Failed to create");
@@ -252,7 +252,7 @@ export default function CreateContestPage() {
               <div>
                 <p className="font-semibold text-strong">Publish Contest</p>
                 <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>
-                  {user?.role === "ADMIN" ? "Make this contest visible to users immediately" : "Submit for admin approval before it goes live"}
+                  {isAdmin ? "Make this contest visible to users immediately" : "Submit for admin approval before it goes live"}
                 </p>
               </div>
             </label>
