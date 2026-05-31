@@ -255,6 +255,12 @@ export const RotateCcw = doodle(DoodleInterfaces.Sync);
 export const Save = doodle(DoodleInterfaces.Floppy);
 export const Search = doodle(DoodleInterfaces.Search);
 export const Send = doodle(DoodleInterfaces.Send);
+export const Settings = stroke(
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  </>
+);
 export const Share2 = shareIcon;
 export const Shield = doodle(DoodleInterfaces.Shield);
 export const ShieldCheck = doodle(DoodleInterfaces.Shield2);

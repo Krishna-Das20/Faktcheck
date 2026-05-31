@@ -60,6 +60,9 @@ export default function MyRoomsPage() {
     const ownerId = room.owner?._id?.toString() || room.owner;
     if (ownerId === userId) return "Owner";
     if (room.coOrganisers?.some((co: any) => (co._id?.toString() || co) === userId)) return "Co-Organiser";
+    const isInParticipants = room.participants?.some((p: any) => (p?._id?.toString() || p?.toString()) === userId);
+    if (isInParticipants) return "Participant";
+    if (user?.role === "ADMIN") return "Admin";
     return "Participant";
   };
 
@@ -141,6 +144,8 @@ export default function MyRoomsPage() {
                           ? { background: "rgb(234 179 8 / 0.2)", color: "#FBBF24" }
                           : role === "Co-Organiser"
                           ? { background: "rgb(59 130 246 / 0.2)", color: "#60A5FA" }
+                          : role === "Admin"
+                          ? { background: "rgb(239 68 68 / 0.2)", color: "#F87171" }
                           : { background: "rgb(156 163 175 / 0.2)", color: "#9CA3AF" }
                       }
                     >
