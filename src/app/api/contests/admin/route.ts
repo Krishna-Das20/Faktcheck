@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Contest from "@/lib/models/Contest";
+import "@/lib/models/Room"; // Ensure Room schema is registered for populate
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 
