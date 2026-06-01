@@ -8,6 +8,7 @@ import {
   Users, Copy, ArrowLeft, Plus, UserPlus,
   Crown, Shield, User, LogOut, Trash2, Link2,
   Megaphone, Pin, Edit2, Paperclip, X, FileText, Download,
+  Calendar, Clock, Award,
 } from "lucide-react";
 import Link from "next/link";
 import Loader from "@/components/common/Loader";
@@ -290,66 +291,60 @@ export default function RoomDetailPage() {
                   const duration = getContestDuration(contest);
                   const startDate = new Date(contest.startTime);
                   return (
-                    <Link
-                      key={contest._id}
-                      href={`/contest/${contest._id}`}
-                      className="card-hover block border border-transparent hover:border-[rgb(var(--color-border-strong))]"
-                    >
+                    <article key={contest._id} className="card-hover flex h-full flex-col">
                       {/* Status + Duration */}
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-4 flex items-start justify-between gap-3">
                         <span
                           className="text-xs px-2.5 py-1 rounded-full font-medium"
                           style={{ background: status.bg, color: status.color }}
                         >
                           {status.label}
                         </span>
-                        <span className="text-xs text-soft-ui">{duration} mins</span>
+                        <span className="text-sm text-soft-ui">{duration} mins</span>
                       </div>
 
                       {/* Title */}
-                      <h3 className="text-strong font-semibold mb-1">{contest.title}</h3>
+                      <h3 className="text-xl font-semibold text-strong">{contest.title}</h3>
 
                       {/* Hosted by */}
-                      <div className="flex items-center gap-1 text-xs text-soft-ui mb-2">
-                        <User className="w-3 h-3" />
-                        Hosted by {contest.createdBy?.name || "Unknown"}
+                      <div className="mt-2 flex items-center gap-2 text-sm text-soft-ui">
+                        <User className="h-4 w-4" />
+                        <span>Hosted by {contest.createdBy?.name || "Unknown"}</span>
                       </div>
 
                       {/* Description */}
-                      {contest.description && (
-                        <p className="text-sm text-muted-ui mb-3 line-clamp-1">{contest.description}</p>
-                      )}
+                      <p className="mt-4 flex-1 text-sm leading-6 text-muted-ui">
+                        {contest.description}
+                      </p>
 
-                      {/* Date & Time */}
-                      <div className="flex gap-3 mb-3">
-                        <span
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                          style={{ background: "rgb(var(--color-panel-muted))" }}
-                        >
-                          📅 {startDate.toLocaleDateString()}
-                        </span>
-                        <span
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                          style={{ background: "rgb(var(--color-panel-muted))" }}
-                        >
-                          🕐 {startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+                      {/* 2x2 Stats Grid */}
+                      <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-muted-ui">
+                        <div className="surface-muted flex items-center gap-2 p-3">
+                          <Calendar className="h-4 w-4" style={{ color: "rgb(var(--color-accent-500))" }} />
+                          <span>{startDate.toLocaleDateString()}</span>
+                        </div>
+                        <div className="surface-muted flex items-center gap-2 p-3">
+                          <Clock className="h-4 w-4" style={{ color: "rgb(var(--color-accent-500))" }} />
+                          <span>{startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <div className="surface-muted flex items-center gap-2 p-3">
+                          <Users className="h-4 w-4" style={{ color: "rgb(var(--color-accent-500))" }} />
+                          <span>{contest.participants?.length || 0} joined</span>
+                        </div>
+                        <div className="surface-muted flex items-center gap-2 p-3">
+                          <Award className="h-4 w-4" style={{ color: "rgb(var(--color-accent-500))" }} />
+                          <span>{(contest.sections?.mcq?.totalMarks || 0) + (contest.sections?.coding?.totalMarks || 0)} pts</span>
+                        </div>
                       </div>
 
-                      {/* Joined + Points */}
-                      <div className="flex gap-3">
-                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                          style={{ background: "rgb(var(--color-panel-muted))", color: "rgb(var(--color-accent-400))" }}
-                        >
-                          <Users className="w-3 h-3" /> {contest.participants?.length || 0} joined
-                        </span>
-                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                          style={{ background: "rgb(var(--color-panel-muted))" }}
-                        >
-                          🏆 {contest.sections?.coding?.totalMarks || contest.sections?.mcq?.totalMarks || 0} pts
-                        </span>
-                      </div>
-                    </Link>
+                      {/* View Details Button */}
+                      <Link
+                        href={`/contest/${contest._id}`}
+                        className="btn-primary mt-5 w-full text-center"
+                      >
+                        {status.label === "Live" ? "Enter contest" : "View details"}
+                      </Link>
+                    </article>
                   );
                 })}
               </div>
