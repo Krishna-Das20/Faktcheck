@@ -14,10 +14,17 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { id } = await params;
     await connectDB();
 
-    const room = await Room.findById(id)
-      .populate("owner", "name email avatar")
-      .populate("coOrganisers", "name email avatar")
-      .populate("participants", "name email avatar");
+    // Resolve by _id or shortCode
+    const isObjectId = /^[a-f\d]{24}$/i.test(id);
+    const room = isObjectId
+      ? await Room.findById(id)
+          .populate("owner", "name email avatar")
+          .populate("coOrganisers", "name email avatar")
+          .populate("participants", "name email avatar")
+      : await Room.findOne({ shortCode: id.toUpperCase() })
+          .populate("owner", "name email avatar")
+          .populate("coOrganisers", "name email avatar")
+          .populate("participants", "name email avatar");
 
     if (!room) return errorResponse("Room not found", 404);
 

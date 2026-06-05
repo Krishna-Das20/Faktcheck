@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { UserCheck, Search, ChevronLeft, ChevronRight } from "lucide-react";
@@ -13,6 +14,16 @@ export default function UserManagementPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const router = useRouter();
+  const { user } = useAuth();
+
+  // Admin-only guard — redirect organisers
+  useEffect(() => {
+    if (user && user.role !== "ADMIN") {
+      toast.error("Admin access required");
+      router.push("/");
+    }
+  }, [user]);
 
   const fetchUsers = async () => {
     setLoading(true);

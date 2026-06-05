@@ -214,32 +214,22 @@ export default function ProctorGuard({
     [enabled, logViolation]
   );
 
-  // Handle COPY — blocked EVERYWHERE, no exceptions
-  const handleCopy = useCallback(
-    (e: ClipboardEvent) => {
-      if (!enabled) return;
-      e.preventDefault();
-      logViolation("COPY_ATTEMPT", "User attempted to copy content");
-    },
-    [enabled, logViolation]
-  );
-
-  // Handle PASTE — allowed ONLY in Monaco code editor
-  const handlePaste = useCallback(
-    (e: ClipboardEvent) => {
+  // Handle copy/paste attempts - allow only in code editor (matches KK behavior)
+  const handleCopyPaste = useCallback(
+    (e: ClipboardEvent, type: ViolationType) => {
       if (!enabled) return;
 
       const target = e.target as HTMLElement;
       const isInCodeEditor =
         target.closest(".monaco-editor") ||
-        target.closest("[data-allow-paste]") ||
+        target.closest("[data-allow-copy-paste]") ||
         target.classList.contains("monaco-editor") ||
         target.classList.contains("inputarea");
 
-      if (isInCodeEditor) return; // Allow paste in code editor
+      if (isInCodeEditor) return; // Allow copy/paste in code editor
 
       e.preventDefault();
-      logViolation("PASTE_ATTEMPT", "User attempted to paste outside code editor");
+      logViolation(type, `User attempted to ${type.toLowerCase().replace("_", " ")}`);
     },
     [enabled, logViolation]
   );
@@ -260,8 +250,10 @@ export default function ProctorGuard({
     );
     document.addEventListener("keydown", handleKeyDown);
 
-    document.addEventListener("copy", handleCopy as EventListener);
-    document.addEventListener("paste", handlePaste as EventListener);
+    const handleCopy = (e: Event) => handleCopyPaste(e as ClipboardEvent, "COPY_ATTEMPT");
+    const handlePaste = (e: Event) => handleCopyPaste(e as ClipboardEvent, "PASTE_ATTEMPT");
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -292,8 +284,8 @@ export default function ProctorGuard({
         handleFullscreenChange
       );
       document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("copy", handleCopy as EventListener);
-      document.removeEventListener("paste", handlePaste as EventListener);
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("contextmenu", handleContextMenu);
     };
@@ -304,8 +296,7 @@ export default function ProctorGuard({
     handleBlur,
     handleFullscreenChange,
     handleKeyDown,
-    handleCopy,
-    handlePaste,
+    handleCopyPaste,
   ]);
 
   // Dismiss warning and re-enter fullscreen

@@ -180,6 +180,16 @@ const aiBeautifyIcon = stroke(
     <path d="m5 14 .8 1.8 1.8.8-1.8.8L5 19.2l-.8-1.8-1.8-.8 1.8-.8L5 14Z" />
   </>
 );
+const externalLinkIcon = stroke(
+  <>
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </>
+);
+const starIcon = stroke(
+  <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+);
 
 export const AlertTriangle = triangleAlertIcon;
 export const AiBeautifyIcon = aiBeautifyIcon;
@@ -211,6 +221,7 @@ export const DoorOpen = doodle(DoodleInterfaces.Drawer);
 export const Download = doodle(DoodleInterfaces.Download);
 export const Edit = doodle(DoodleInterfaces.Pencil);
 export const Edit2 = doodle(DoodleInterfaces.Pencil2);
+export const ExternalLink = externalLinkIcon;
 export const Eye = doodle(DoodleInterfaces.Unhide);
 export const EyeOff = doodle(DoodleInterfaces.Hide);
 export const FileCode = doodle(DoodleFiles.FileCode);
@@ -264,6 +275,7 @@ export const Settings = stroke(
 export const Share2 = shareIcon;
 export const Shield = doodle(DoodleInterfaces.Shield);
 export const ShieldCheck = doodle(DoodleInterfaces.Shield2);
+export const Star = starIcon;
 export const StopCircle = stopCircleIcon;
 export const Sun = doodle(DoodleInterfaces.Sun);
 export const Tag = doodle(DoodleECommerce.Tag);

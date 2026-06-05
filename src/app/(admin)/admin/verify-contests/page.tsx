@@ -7,11 +7,19 @@ import { Clock, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function VerifyContestsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
+
+  // Admin-only guard — redirect organisers
+  useEffect(() => {
+    if (user && user.role !== "ADMIN") {
+      toast.error("Admin access required");
+      router.push("/");
+    }
+  }, [user]);
 
   const fetchPending = async () => {
     try {

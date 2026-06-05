@@ -14,6 +14,13 @@ export default function AdminRoomsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (user && user.role !== "ADMIN") {
+      toast.error("Admin access required");
+      router.push("/");
+    }
+  }, [user]);
+
+  useEffect(() => {
     const fetch_ = async () => {
       try {
         const res = await fetch("/api/rooms", { headers: { Authorization: `Bearer ${token}` } });

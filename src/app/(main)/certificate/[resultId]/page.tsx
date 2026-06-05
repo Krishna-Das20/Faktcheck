@@ -14,15 +14,44 @@ export default function CertificatePage() {
   const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetch_ = async () => {
+    const fetchCertificate = async () => {
       try {
-        const res = await fetch(`/api/leaderboard/${resultId}/rank`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        setResult(data.result || data);
-      } catch { toast.error("Failed to load certificate"); }
+        // Step 1: Fetch result by resultId to get contestId
+        const resultRes = await fetch(`/api/results/${resultId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const resultData = await resultRes.json();
+
+        if (!resultRes.ok || !resultData.result) {
+          toast.error("Result not found");
+          setLoading(false);
+          return;
+        }
+
+        const contestId =
+          resultData.result.contestId?._id || resultData.result.contestId;
+
+        // Step 2: Generate certificate via POST
+        const certRes = await fetch(
+          `/api/leaderboard/${contestId}/certificate`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const certData = await certRes.json();
+
+        // Merge result data with certificate data for rendering
+        setResult({
+          ...resultData.result,
+          ...(certData.certificate || {}),
+        });
+      } catch {
+        toast.error("Failed to load certificate");
+      }
       setLoading(false);
     };
-    fetch_();
+    fetchCertificate();
   }, [resultId]);
 
   const handleDownload = async () => {
