@@ -1,0 +1,417 @@
+.user-management {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.user-management .page-header {
+  margin-bottom: 2rem;
+}
+
+.user-management .page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.75rem;
+  color: #fff;
+}
+
+.user-management .page-header p {
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.5rem;
+}
+
+.user-management .filters-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.user-management .search-form {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 300px;
+}
+
+.user-management .search-form input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+}
+
+.user-management .search-form button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.user-management .role-filter {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.user-management .role-filter option {
+  background: #1a1a2e;
+}
+
+.user-management .users-table-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.user-management .users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-management .users-table th,
+.user-management .users-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-management .users-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.user-management .users-table td {
+  color: #fff;
+}
+
+.user-management .role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.user-management .role-badge.admin {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.user-management .role-badge.organiser {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+}
+
+.user-management .role-badge.user {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.user-management .verified {
+  color: #22c55e;
+}
+
+.user-management .not-verified {
+  color: #ef4444;
+}
+
+.user-management .action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-management .make-organiser-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.user-management .make-organiser-btn:hover {
+  background: rgba(251, 146, 60, 0.3);
+}
+
+.user-management .remove-organiser-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.user-management .remove-organiser-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.user-management .add-to-room-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.user-management .add-to-room-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.user-management .pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.user-management .pagination button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.user-management .pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-management .pagination span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.user-management .loading {
+  padding: 3rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Modal Styles */
+.user-management .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.user-management .modal-content {
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 450px;
+  overflow: hidden;
+}
+
+.user-management .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-management .modal-header h3 {
+  color: #fff;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.user-management .close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  transition: color 0.2s;
+}
+
+.user-management .close-btn:hover {
+  color: #fff;
+}
+
+.user-management .modal-body {
+  padding: 1.5rem;
+}
+
+.user-management .user-info {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1.5rem;
+}
+
+.user-management .user-info strong {
+  color: #fff;
+}
+
+.user-management .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.user-management .form-group label {
+  display: block;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.user-management .room-select,
+.user-management .role-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.user-management .room-select option,
+.user-management .role-select option {
+  background: #1a1a2e;
+}
+
+.user-management .hint-text {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.user-management .modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: flex-end;
+}
+
+.user-management .cancel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.user-management .cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.user-management .confirm-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.user-management .confirm-btn:hover {
+  opacity: 0.9;
+}
+
+.user-management .confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .user-management {
+    padding: 1rem;
+  }
+
+  .user-management .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .user-management .filters-bar {
+    flex-direction: column;
+  }
+
+  .user-management .search-form {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .user-management .users-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .user-management .users-table th,
+  .user-management .users-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .user-management .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .user-management .make-organiser-btn,
+  .user-management .remove-organiser-btn,
+  .user-management .add-to-room-btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+  }
+}

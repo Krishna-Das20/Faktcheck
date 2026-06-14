@@ -2,18 +2,24 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { joinRoomSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/rooms/join — join room by short code
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
+
+    const { data, error } = await validateBody(request, joinRoomSchema);
+    if (error) return error;
+
     await connectDB();
 
-    const { shortCode } = await request.json();
-    if (!shortCode) return errorResponse("Room code is required");
-
-    const room = await Room.findOne({ shortCode: shortCode.toUpperCase() });
+    const room = await Room.findOne({ shortCode: data.shortCode.toUpperCase() });
     if (!room) return errorResponse("Room not found. Check the code.", 404);
 
     // Check if already a member/owner/co-organiser

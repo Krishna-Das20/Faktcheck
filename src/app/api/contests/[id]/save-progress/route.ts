@@ -2,27 +2,38 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { requireAuth } from "@/lib/api-auth";
-import { verifyToken } from "@/lib/auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { saveProgressSchema } from "@/lib/validations";
 
 type Params = { params: Promise<{ id: string }> };
 
 // POST /api/contests/[id]/save-progress — periodic auto-save
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
 
-    const { mcqAnswers, type, questionId, problemId, timeSpent, category } = await request.json();
+    const { data, error } = await validateBody(request, saveProgressSchema);
+    if (error) return error;
+
+    // Extract validated fields + additional fields not covered by schema
+    const body = await request.clone().json();
+    const mcqAnswers = data.mcqAnswers;
+    const timeSpent = data.timeSpent;
+    const { type, questionId, problemId, category } = body;
 
     const progress = await ContestProgress.findOne({ contestId: id, userId: user._id });
     if (!progress) return errorResponse("Contest not started");
     if (progress.status === "SUBMITTED") return errorResponse("Contest already submitted");
 
     // Save MCQ answers if provided
-    if (mcqAnswers?.length > 0) {
-      progress.mcqProgress.answers = mcqAnswers;
+    if (mcqAnswers && mcqAnswers.length > 0) {
+      progress.mcqProgress.answers = mcqAnswers as any;
     }
 
     // Track time if provided

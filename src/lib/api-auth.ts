@@ -3,6 +3,11 @@ import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { verifyToken, type JWTPayload } from "@/lib/auth";
 
+// Per-request cache: avoids decoding JWT + querying MongoDB multiple times
+// for the same request (e.g. rateLimit() + requireAuth() in the same handler).
+// WeakMap ensures automatic cleanup when the request is garbage-collected.
+const authCache = new WeakMap<NextRequest, Promise<AuthenticatedUser | null>>();
+
 export interface AuthenticatedUser {
   _id: string;
   name: string;
@@ -15,6 +20,18 @@ export interface AuthenticatedUser {
  * Returns the decoded user or null if not authenticated.
  */
 export async function getAuthUser(request: NextRequest): Promise<AuthenticatedUser | null> {
+  // Return cached result if this request was already authenticated
+  const cached = authCache.get(request);
+  if (cached) return cached;
+
+  // Create the promise and cache it immediately (before awaiting)
+  // so concurrent calls for the same request share the same promise
+  const authPromise = _resolveAuth(request);
+  authCache.set(request, authPromise);
+  return authPromise;
+}
+
+async function _resolveAuth(request: NextRequest): Promise<AuthenticatedUser | null> {
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 

@@ -2,23 +2,24 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import CodingProblem from "@/lib/models/CodingProblem";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
 import { submitToJudge0, mapStatusToVerdict } from "@/lib/judge0";
+import { checkAllSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/submissions/check-all — Check code against all test cases (without saving)
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(request);
-    await connectDB();
-    const body = await request.json();
-    const { problemId, sourceCode, languageId } = body;
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_EXECUTE);
+    if (limited) return limited;
 
-    if (!sourceCode || !languageId || !problemId) {
-      return errorResponse(
-        "Source code, language, and problem ID are required",
-        400
-      );
-    }
+    await requireAuth(request);
+
+    const { data, error } = await validateBody(request, checkAllSchema);
+    if (error) return error;
+
+    await connectDB();
+    const { problemId, sourceCode, languageId } = data;
 
     const problem = await CodingProblem.findById(problemId);
     if (!problem) return errorResponse("Problem not found", 404);

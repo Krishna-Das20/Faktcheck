@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
@@ -8,7 +8,7 @@ import {
   Users, Copy, ArrowLeft, Plus, UserPlus,
   Crown, Shield, User, LogOut, Trash2, Link2,
   Megaphone, Pin, Edit2, Paperclip, X, FileText, Download,
-  Calendar, Clock, Award,
+  Calendar, Clock, Award, Loader2, Image as ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Loader from "@/components/common/Loader";
@@ -479,7 +479,10 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
   const [formData, setFormData] = useState({ title: "", content: "" });
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -498,8 +501,112 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
 
   const resetForm = () => {
     setFormData({ title: "", content: "" });
+    setAttachments([]);
     setEditingAnnouncement(null);
     setShowCreateModal(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    const uploadedFiles: any[] = [];
+
+    for (const file of files) {
+      // 1MB limit
+      if (file.size > 1 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Max size is 1MB.`);
+        continue;
+      }
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      try {
+        const res = await fetch("/api/upload/file", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadFormData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          uploadedFiles.push({
+            fileName: file.name,
+            fileUrl: data.url,
+            fileType: data.fileType || (file.type.startsWith("image/") ? "image" : "document"),
+            publicId: data.publicId,
+          });
+        } else {
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+
+    setAttachments((prev) => [...prev, ...uploadedFiles]);
+    setUploading(false);
+    // Reset file input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+
+    if (imageFiles.length === 0) return;
+    e.preventDefault();
+
+    setUploading(true);
+    const uploadedFiles: any[] = [];
+
+    for (const file of imageFiles) {
+      if (file.size > 1 * 1024 * 1024) {
+        toast.error("Pasted image is too large. Max size is 1MB.");
+        continue;
+      }
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      try {
+        const res = await fetch("/api/upload/file", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadFormData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          uploadedFiles.push({
+            fileName: file.name || `pasted-image-${Date.now()}.png`,
+            fileUrl: data.url,
+            fileType: data.fileType || "image",
+            publicId: data.publicId,
+          });
+        } else {
+          toast.error("Failed to upload pasted image");
+        }
+      } catch {
+        toast.error("Failed to upload pasted image");
+      }
+    }
+
+    if (uploadedFiles.length > 0) {
+      setAttachments((prev) => [...prev, ...uploadedFiles]);
+      toast.success(`${uploadedFiles.length} image${uploadedFiles.length > 1 ? "s" : ""} pasted!`);
+    }
+    setUploading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -517,7 +624,7 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, attachments }),
       });
       if (res.ok) {
         toast.success(editingAnnouncement ? "Announcement updated" : "Announcement created");
@@ -531,6 +638,7 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
   const handleEdit = (announcement: any) => {
     setEditingAnnouncement(announcement);
     setFormData({ title: announcement.title, content: announcement.content });
+    setAttachments(announcement.attachments || []);
     setShowCreateModal(true);
   };
 
@@ -614,21 +722,47 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
 
                   {/* Attachments */}
                   {announcement.attachments?.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {announcement.attachments.map((file: any, idx: number) => (
-                        <a
-                          key={idx}
-                          href={file.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-                          style={{ background: "rgb(var(--color-panel-muted))" }}
-                        >
-                          <FileText className="w-4 h-4" style={{ color: "rgb(var(--color-accent-400))" }} />
-                          <span className="text-sm text-muted-ui">{file.fileName}</span>
-                          <Download className="w-4 h-4 text-soft-ui" />
-                        </a>
-                      ))}
+                    <div className="space-y-3 mb-4">
+                      {/* Inline images */}
+                      {announcement.attachments
+                        .filter((file: any) => file.fileType === "image" || /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.fileName))
+                        .map((file: any, idx: number) => (
+                          <div key={`img-${idx}`} className="rounded-lg overflow-hidden" style={{ border: "1px solid rgb(var(--color-border))" }}>
+                            <a href={file.fileUrl} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={file.fileUrl}
+                                alt={file.fileName}
+                                className="max-w-full max-h-96 object-contain rounded-lg"
+                                style={{ background: "rgb(var(--color-panel-muted))" }}
+                                loading="lazy"
+                              />
+                            </a>
+                          </div>
+                        ))}
+                      {/* Non-image files as download links */}
+                      {announcement.attachments
+                        .filter((file: any) => file.fileType !== "image" && !/\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.fileName))
+                        .length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {announcement.attachments
+                            .filter((file: any) => file.fileType !== "image" && !/\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.fileName))
+                            .map((file: any, idx: number) => (
+                              <a
+                                key={`doc-${idx}`}
+                                href={file.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={file.fileName}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:opacity-80"
+                                style={{ background: "rgb(var(--color-panel-muted))" }}
+                              >
+                                <FileText className="w-4 h-4" style={{ color: "rgb(var(--color-accent-400))" }} />
+                                <span className="text-sm text-muted-ui">{file.fileName}</span>
+                                <Download className="w-4 h-4 text-soft-ui" />
+                              </a>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -693,7 +827,7 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} onPaste={handlePaste}>
               <div className="mb-4">
                 <label className="label">Title</label>
                 <input
@@ -706,7 +840,7 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
                 />
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="label">Content</label>
                 <textarea
                   value={formData.content}
@@ -715,6 +849,77 @@ function AnnouncementsTab({ roomId, isOrganiser, token }: { roomId: string; isOr
                   rows={6}
                   className="input-field w-full resize-none"
                 />
+              </div>
+
+              {/* Attachments */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--foreground-secondary, rgb(var(--color-text-muted)))" }}>
+                  Attachments
+                </label>
+
+                {/* Uploaded files list */}
+                {attachments.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {attachments.map((file: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                        style={{ background: "rgb(var(--color-panel-muted))" }}
+                      >
+                        {file.fileType === "image" || /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.fileName) ? (
+                          <img src={file.fileUrl} alt={file.fileName} className="w-10 h-10 object-cover rounded" />
+                        ) : (
+                          <FileText className="w-4 h-4" style={{ color: "rgb(var(--color-accent-400))" }} />
+                        )}
+                        <span className="text-sm text-muted-ui flex-1 truncate">{file.fileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(idx)}
+                          className="p-0.5 rounded-full transition-colors hover:bg-red-500/20"
+                          style={{ color: "rgb(248 113 113)" }}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm disabled:opacity-50"
+                  style={{
+                    background: "rgb(var(--color-panel-muted))",
+                    color: "rgb(var(--color-text-muted))",
+                  }}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Paperclip className="w-4 h-4" />
+                      Add files
+                    </>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+                <p className="text-xs mt-2" style={{ color: "rgb(var(--color-text-soft))" }}>
+                  Tip: You can also paste images from clipboard (Ctrl+V). Max 1MB per file.
+                </p>
               </div>
 
               <div className="flex gap-3">

@@ -14,6 +14,7 @@ export default function CertificatePage() {
   const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!token) return;
     const fetchCertificate = async () => {
       try {
         // Step 1: Fetch result by resultId to get contestId
@@ -52,7 +53,7 @@ export default function CertificatePage() {
       setLoading(false);
     };
     fetchCertificate();
-  }, [resultId]);
+  }, [resultId, token]);
 
   const handleDownload = async () => {
     if (!certRef.current) return;

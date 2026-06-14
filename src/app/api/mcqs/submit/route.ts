@@ -6,19 +6,23 @@ import Contest from "@/lib/models/Contest";
 import ContestProgress from "@/lib/models/ContestProgress";
 import Result from "@/lib/models/Result";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { submitMCQAnswersSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/mcqs/submit — Submit MCQ answers with scoring
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth(request);
-    await connectDB();
-    const body = await request.json();
-    const { contestId, answers } = body;
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_SUBMIT);
+    if (limited) return limited;
 
-    if (!contestId || !Array.isArray(answers)) {
-      return errorResponse("contestId and answers array required", 400);
-    }
+    const user = await requireAuth(request);
+
+    const { data, error } = await validateBody(request, submitMCQAnswersSchema);
+    if (error) return error;
+
+    await connectDB();
+    const { contestId, answers } = data;
 
     // Verify contest exists and user is registered
     const contest = await Contest.findById(contestId);

@@ -3,10 +3,14 @@ import connectDB from "@/lib/db";
 import Contest from "@/lib/models/Contest";
 import { requireAuth, requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/contests/my — User's registered contests
 export async function GET(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     await connectDB();
 

@@ -57,7 +57,7 @@ const roomSchema = new Schema<IRoom>(
     ],
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 // Generate unique short code before saving

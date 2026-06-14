@@ -2,18 +2,30 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Contest from "@/lib/models/Contest";
 import "@/lib/models/Room"; // Ensure Room schema is registered for populate
+import Room from "@/lib/models/Room";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/contests/admin — Admin/Organiser contest management with stats
 export async function GET(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     await connectDB();
 
     const query: Record<string, unknown> = {};
     if (user.role === "ORGANISER") {
-      query.createdBy = user._id;
+      const coOrganisedRooms = await Room.find({
+        $or: [{ owner: user._id }, { coOrganisers: user._id }],
+        isActive: true,
+      }).select("_id");
+      query.$or = [
+        { createdBy: user._id },
+        { roomId: { $in: coOrganisedRooms.map((room) => room._id) } },
+      ];
     }
 
     const contests = await Contest.find(query)
@@ -47,4 +59,3 @@ export async function GET(request: NextRequest) {
     return errorResponse("Server error", 500);
   }
 }
-

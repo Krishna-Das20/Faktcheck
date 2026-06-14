@@ -70,31 +70,37 @@ function ContestInner({
     };
   }, [contestId, sectionType, token]);
 
-  // Auto-submit on malpractice (3 violations)
+  // Auto-submit ENTIRE contest on malpractice (3 violations)
+  // The violation API already sets progress.status='SUBMITTED' and creates Result server-side.
+  // Client handler saves current section answers and redirects to review.
   const handleAutoSubmit = useCallback(
     async (reason: string) => {
       try {
-        // Read MCQ answers from localStorage and submit
-        const mcqAnswers = JSON.parse(
-          localStorage.getItem(`mcq_answers_${contestId}`) || "{}"
-        );
-        const formattedAnswers = Object.entries(mcqAnswers).map(
-          ([mcqId, selectedOptions]) => ({
-            mcqId,
-            selectedOptions,
-          })
-        );
+        // If user was in MCQ section, try to submit their answers
+        if (sectionType === "mcq") {
+          const mcqAnswers = JSON.parse(
+            localStorage.getItem(`mcq_answers_${contestId}`) || "{}"
+          );
+          const formattedAnswers = Object.entries(mcqAnswers).map(
+            ([mcqId, selectedOptions]) => ({
+              mcqId,
+              selectedOptions,
+            })
+          );
+          // Best-effort save to section submit (server already has progress saved)
+          try {
+            await fetch(`/api/contests/${contestId}/sections/mcq/submit`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ mcqAnswers: formattedAnswers }),
+            });
+          } catch { /* Server-side violation handler already created the Result */ }
+        }
 
-        await fetch(`/api/contests/${contestId}/submit`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ mcqAnswers: formattedAnswers }),
-        });
-
-        // Clear localStorage for this contest
+        // Clear ALL localStorage for this contest
         Object.keys(localStorage).forEach((key) => {
           if (key.includes(contestId)) {
             localStorage.removeItem(key);
@@ -104,12 +110,12 @@ function ContestInner({
         console.error("Auto-submit error");
       }
 
-      // Navigate to review page
+      // Navigate to review — entire contest is terminated
       setTimeout(() => {
         router.push(`/contest/${contestId}/review`);
       }, 2000);
     },
-    [contestId, token, router]
+    [contestId, token, router, sectionType]
   );
 
   // If on hub page (not a section), don't enable proctoring

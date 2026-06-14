@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/contests/[id]/progress
 export async function GET(
@@ -10,6 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     await connectDB();
     const { id } = await params;

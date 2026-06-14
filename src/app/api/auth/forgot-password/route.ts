@@ -2,20 +2,23 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { generateResetToken, sendPasswordResetEmail } from "@/lib/email";
-import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { forgotPasswordSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/auth/forgot-password
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    const { email } = await parseBody<{ email: string }>(request);
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.AUTH_SENSITIVE);
+    if (limited) return limited;
 
-    if (!email) {
-      return errorResponse("Please provide email");
-    }
+    const { data, error } = await validateBody(request, forgotPasswordSchema);
+    if (error) return error;
+
+    await connectDB();
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: data.email });
     if (!user) {
       // Don't reveal if user exists
       return successResponse({
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
     await user.save();
 
     // Send reset email
-    await sendPasswordResetEmail(email, resetToken);
+    await sendPasswordResetEmail(data.email, resetToken);
 
     return successResponse({
       message: "If an account exists with this email, a reset link has been sent.",

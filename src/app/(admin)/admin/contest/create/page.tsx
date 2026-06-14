@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 import toast from "react-hot-toast";
-import { Save, X, Plus, Trash2, Clock, Timer } from "lucide-react";
+import { Save, X, Plus, Trash2, Clock, Timer, DoorOpen } from "lucide-react";
 
 const inputStyle = { background: "var(--background-secondary)", color: "var(--foreground)", border: "1px solid var(--border)" };
 
@@ -16,12 +17,23 @@ interface SectionConfig {
 }
 
 export default function CreateContestPage() {
+  return (
+    <Suspense fallback={<div className="page-shell"><div className="max-w-4xl mx-auto px-4 py-12 text-center text-muted-ui">Loading...</div></div>}>
+      <CreateContestContent />
+    </Suspense>
+  );
+}
+
+function CreateContestContent() {
   const router = useRouter();
-  const { user, token, isAdmin } = useAuth();
+  const searchParams = useSearchParams();
+  const preselectedRoomId = searchParams.get("roomId") || "";
+  const { user, token, isAdmin, isAdminOrOrganiser } = useAuth();
 
   const [formData, setFormData] = useState({
     title: "", description: "", startTime: "", endTime: "",
     maxParticipants: "",
+    roomId: preselectedRoomId,
     sections: {
       mcq: { enabled: true, hasTimer: false, duration: 30, proctored: true } as SectionConfig,
       coding: { enabled: true, hasTimer: false, duration: 120, proctored: true } as SectionConfig,
@@ -32,6 +44,44 @@ export default function CreateContestPage() {
     isPublished: false,
   });
   const [loading, setLoading] = useState(false);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+
+  useEffect(() => {
+    if (user?.role === "ORGANISER" || user?.role === "ADMIN") {
+      fetchRooms();
+    }
+  }, [user]);
+
+  const fetchRooms = async () => {
+    setLoadingRooms(true);
+    try {
+      const res = await fetch("/api/rooms", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const allRooms = data.rooms || [];
+
+      if (user?.role === "ADMIN") {
+        setRooms(allRooms);
+      } else {
+        // Organiser sees only rooms they own or co-organise
+        const userId = user?._id?.toString?.() || user?._id;
+        const manageableRooms = allRooms.filter((room: any) => {
+          const ownerId = room.owner?._id?.toString?.() || room.owner?._id || room.owner;
+          const isOwner = ownerId === userId;
+          const isCoOrg = room.coOrganisers?.some((co: any) => ((co._id?.toString?.() || co._id || co) === userId));
+          return isOwner || isCoOrg;
+        });
+        setRooms(manageableRooms);
+      }
+    } catch {
+      console.error("Failed to fetch rooms");
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, type } = e.target;
@@ -58,22 +108,6 @@ export default function CreateContestPage() {
     setFormData((prev) => ({ ...prev, [field]: prev[field].map((item, i) => (i === index ? value : item)) }));
   };
 
-  // Compute total duration from enabled section timers
-  const computeDuration = () => {
-    let total = 0;
-    const { mcq, coding, forms } = formData.sections;
-    if (mcq.enabled && mcq.hasTimer) total += mcq.duration;
-    if (coding.enabled && coding.hasTimer) total += coding.duration;
-    if (forms.enabled && forms.hasTimer) total += forms.duration;
-
-    // If no section has timer, use contest window (end - start)
-    if (total === 0 && formData.startTime && formData.endTime) {
-      const diff = (new Date(formData.endTime).getTime() - new Date(formData.startTime).getTime()) / 60000;
-      total = Math.max(1, Math.round(diff));
-    }
-    return total || 120; // fallback
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) { toast.error("Title is required"); return; }
@@ -83,13 +117,17 @@ export default function CreateContestPage() {
 
     setLoading(true);
     try {
-      const duration = computeDuration();
-      const body = {
+      // Auto-compute duration from start/end times (in minutes)
+      const durationMs = new Date(formData.endTime).getTime() - new Date(formData.startTime).getTime();
+      const durationMins = Math.round(durationMs / 60000);
+
+      const body: any = {
         ...formData,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
-        duration,
+        duration: durationMins,
         maxParticipants: formData.maxParticipants ? Number(formData.maxParticipants) : undefined,
+        roomId: formData.roomId || undefined,
         sections: {
           mcq: { ...formData.sections.mcq, duration: formData.sections.mcq.hasTimer ? Number(formData.sections.mcq.duration) : 0, totalMarks: 0 },
           coding: { ...formData.sections.coding, duration: formData.sections.coding.hasTimer ? Number(formData.sections.coding.duration) : 0, totalMarks: 0 },
@@ -180,6 +218,52 @@ export default function CreateContestPage() {
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--foreground-secondary)" }}>Contest Title *</label>
               <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-3 py-2.5 rounded-lg" style={inputStyle} placeholder="e.g., Weekly Coding Challenge #1" required />
             </div>
+
+            {/* Room Selector */}
+            {(user?.role === "ORGANISER" || user?.role === "ADMIN") && (
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--foreground-secondary)" }}>
+                  <DoorOpen className="inline w-4 h-4 mr-1" />
+                  Room (Optional)
+                </label>
+                {loadingRooms ? (
+                  <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>Loading rooms...</p>
+                ) : rooms.length > 0 ? (
+                  <>
+                    <select
+                      name="roomId"
+                      value={formData.roomId}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2.5 rounded-lg"
+                      style={inputStyle}
+                      disabled={!!preselectedRoomId}
+                    >
+                      <option value="">Public Contest (No Room)</option>
+                      {rooms.map((room) => (
+                        <option key={room._id} value={room._id}>
+                          {room.name} ({room.shortCode}) {user?.role === "ADMIN" && room.owner?.name ? `- by ${room.owner.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.roomId && (
+                      <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                        This contest will be visible only to room members and auto-approved
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="p-3 rounded-lg" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }}>
+                    <p className="text-sm mb-2" style={{ color: "var(--foreground-secondary)" }}>
+                      No rooms available. Create a room to host private contests.
+                    </p>
+                    <Link href="/rooms/create" className="text-sm" style={{ color: "var(--primary)" }}>
+                      + Create a Room
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--foreground-secondary)" }}>Description *</label>
               <textarea name="description" value={formData.description} onChange={handleChange} rows={4} className="w-full px-3 py-2.5 rounded-lg resize-none" style={inputStyle} placeholder="Describe what this contest is about..." required />

@@ -3,7 +3,9 @@ import { OAuth2Client } from "google-auth-library";
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { hashPassword, generateToken } from "@/lib/auth";
-import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { googleAuthSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -11,18 +13,19 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 // POST /api/auth/google
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    const { credential } = await parseBody<{ credential: string }>(request);
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.AUTH_LOGIN);
+    if (limited) return limited;
 
-    if (!credential) {
-      return errorResponse("Google credential is required");
-    }
+    const { data, error } = await validateBody(request, googleAuthSchema);
+    if (error) return error;
+
+    await connectDB();
 
     // VERIFY the Google JWT with Google's public keys — not just decode
     let payload;
     try {
       const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
+        idToken: data.credential,
         audience: GOOGLE_CLIENT_ID,
       });
       payload = ticket.getPayload();

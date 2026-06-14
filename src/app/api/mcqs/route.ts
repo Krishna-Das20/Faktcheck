@@ -3,10 +3,14 @@ import connectDB from "@/lib/db";
 import MCQ from "@/lib/models/MCQ";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/mcqs — create a contest-specific MCQ (optionally also save to library)
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     await connectDB();
 

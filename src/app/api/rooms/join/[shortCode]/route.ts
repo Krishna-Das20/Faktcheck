@@ -3,12 +3,16 @@ import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ shortCode: string }> };
 
 // GET /api/rooms/join/[shortCode] — Join room by link (auto-join)
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { shortCode } = await params;
     await connectDB();

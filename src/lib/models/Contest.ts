@@ -17,7 +17,7 @@ export interface IContest extends Document {
   sections: {
     mcq: IContestSection & { duration: number };
     coding: IContestSection & { duration: number };
-    forms: Omit<IContestSection, "duration">;
+    forms: IContestSection & { duration: number };
   };
   rules: string[];
   prizes: string[];
@@ -30,6 +30,8 @@ export interface IContest extends Document {
   verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
   rejectionReason: string | null;
   roomId: mongoose.Types.ObjectId | null;
+  manuallyEnded: boolean;
+  endedBy: mongoose.Types.ObjectId | null;
   totalMarks: number; // virtual
   createdAt: Date;
   updatedAt: Date;
@@ -58,8 +60,8 @@ const contestSchema = new Schema<IContest>(
       required: [true, "End time is required"],
     },
     duration: {
-      type: Number, // in minutes
-      required: [true, "Duration is required"],
+      type: Number, // in minutes — auto-computed from endTime - startTime
+      default: 120,
     },
     sections: {
       mcq: {
@@ -78,6 +80,8 @@ const contestSchema = new Schema<IContest>(
       },
       forms: {
         enabled: { type: Boolean, default: false },
+        hasTimer: { type: Boolean, default: false },
+        duration: { type: Number, default: 0 },
         totalMarks: { type: Number, default: 0 },
         proctored: { type: Boolean, default: false },
       },
@@ -124,6 +128,15 @@ const contestSchema = new Schema<IContest>(
     roomId: {
       type: Schema.Types.ObjectId,
       ref: "Room",
+      default: null,
+    },
+    manuallyEnded: {
+      type: Boolean,
+      default: false,
+    },
+    endedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       default: null,
     },
   },

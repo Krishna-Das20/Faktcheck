@@ -1,18 +1,25 @@
 import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Form from "@/lib/models/Form";
-import { requireAdminOrOrganiser, requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { requireAdminOrOrganiser } from "@/lib/api-auth";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { createFormSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/forms — Create a new form
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAdminOrOrganiser(request);
-    await connectDB();
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
 
-    const body = await request.json();
+    const user = await requireAdminOrOrganiser(request);
+
+    const { data, error } = await validateBody(request, createFormSchema);
+    if (error) return error;
+
+    await connectDB();
     const form = await Form.create({
-      ...body,
+      ...data,
       createdBy: user._id,
     });
 

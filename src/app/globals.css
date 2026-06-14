@@ -178,6 +178,16 @@
   --color-text-muted: 176 176 176;
   --color-text-soft: 132 132 132;
   --home-grid-opacity: 0.08;
+
+  /* ── Convenience aliases (hex) for inline styles ── */
+  --primary: #FF6B35;
+  --primary-rgb: 255, 107, 53;
+  --foreground: #ffffff;
+  --foreground-secondary: #b0b0b0;
+  --background: #000000;
+  --background-secondary: #121212;
+  --background-card: #0a0a0a;
+  --border: #2c2c2c;
 }
 
 /* ── Light theme ── */
@@ -204,6 +214,16 @@
   --color-text-muted: 84 66 52;
   --color-text-soft: 125 104 86;
   --home-grid-opacity: 0.16;
+
+  /* ── Convenience aliases (hex) for inline styles ── */
+  --primary: #FF6B35;
+  --primary-rgb: 255, 107, 53;
+  --foreground: #201812;
+  --foreground-secondary: #544234;
+  --background: #ffffff;
+  --background-secondary: #f8f2ec;
+  --background-card: #fffbf6;
+  --border: #dbcdc0;
 }
 
 /* ── Base layer ── */

@@ -5,10 +5,14 @@ import Contest from "@/lib/models/Contest";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { getAuthUser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/leaderboard/[contestId]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ contestId: string }> }) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.PUBLIC_READ);
+    if (limited) return limited;
+
     const { contestId } = await params;
     await connectDB();
 
@@ -56,12 +60,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
-    // Build leaderboard
+    // Build leaderboard with tied-rank logic (matching KK)
+    let currentRank = skip + 1;
     const leaderboard = results.map((result, index) => {
       const userId = (result.userId as any)?._id || result.userId;
+
+      // Tied-rank: same totalScore AND timeTaken = same rank
+      if (index > 0) {
+        const prev = results[index - 1];
+        if (
+          result.totalScore === prev.totalScore &&
+          result.timeTaken === prev.timeTaken
+        ) {
+          // Same rank as previous
+        } else {
+          currentRank = skip + index + 1;
+        }
+      }
+
       const base: any = {
-        rank: skip + index + 1,
+        rank: currentRank,
+        userId: userId?.toString(),
         user: {
+          _id: userId?.toString(),
           name: (result.userId as any)?.name,
           college: (result.userId as any)?.college,
           avatar: (result.userId as any)?.avatar,
@@ -93,6 +114,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           };
         }
       }
+
+      // Persist rank in DB (like KK does)
+      Result.findByIdAndUpdate(result._id, { rank: currentRank }).catch(() => {});
 
       return base;
     });

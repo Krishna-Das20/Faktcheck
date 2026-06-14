@@ -2,20 +2,23 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { comparePassword, generateToken } from "@/lib/auth";
-import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { loginSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/auth/login
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    const { email, password } = await parseBody<{ email: string; password: string }>(request);
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.AUTH_LOGIN);
+    if (limited) return limited;
 
-    if (!email || !password) {
-      return errorResponse("Please provide email and password");
-    }
+    const { data, error } = await validateBody(request, loginSchema);
+    if (error) return error;
+
+    await connectDB();
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: data.email });
     if (!user) {
       return errorResponse("Invalid credentials", 401);
     }
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check password
-    const isMatch = await comparePassword(password, user.password);
+    const isMatch = await comparePassword(data.password, user.password);
     if (!isMatch) {
       return errorResponse("Invalid credentials", 401);
     }

@@ -4,12 +4,16 @@ import Contest from "@/lib/models/Contest";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
-// POST /api/contests/[id]/start
+// POST /api/contests/[id]/start — Start the contest (creates progress entry)
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
@@ -26,11 +30,20 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Check if already started
     let progress = await ContestProgress.findOne({ contestId: id, userId: user._id });
     if (progress) {
-      const remainingTime = Math.max(
-        0,
-        contest.duration * 60 - Math.floor((Date.now() - new Date(progress.startedAt).getTime()) / 1000)
-      );
-      return successResponse({ message: "Contest already started", progress, remainingTime });
+      return successResponse({
+        message: "Contest already started",
+        progress,
+        sectionStatuses: {
+          mcq: progress.mcqProgress?.sectionStatus || "NOT_STARTED",
+          coding: progress.codingProgress?.sectionStatus || "NOT_STARTED",
+          forms: progress.formsProgress?.sectionStatus || "NOT_STARTED",
+        },
+        contest: {
+          title: contest.title,
+          sections: contest.sections,
+          status: contest.status,
+        },
+      });
     }
 
     // Create new progress
@@ -41,7 +54,23 @@ export async function POST(request: NextRequest, { params }: Params) {
       status: "IN_PROGRESS",
     });
 
-    return successResponse({ message: "Contest started", progress, remainingTime: contest.duration * 60 }, 201);
+    return successResponse(
+      {
+        message: "Contest started",
+        progress,
+        sectionStatuses: {
+          mcq: "NOT_STARTED",
+          coding: "NOT_STARTED",
+          forms: "NOT_STARTED",
+        },
+        contest: {
+          title: contest.title,
+          sections: contest.sections,
+          status: contest.status,
+        },
+      },
+      201
+    );
   } catch (error: any) {
     if (error.message === "NOT_AUTHENTICATED") return errorResponse("Not authorized", 401);
     console.error("Start contest error:", error);
@@ -49,9 +78,12 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 }
 
-// GET /api/contests/[id]/start — get progress
+// GET /api/contests/[id]/start — Get progress & section statuses
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
@@ -64,14 +96,20 @@ export async function GET(request: NextRequest, { params }: Params) {
       return successResponse({ started: false, message: "Contest not started yet" });
     }
 
-    const elapsedSeconds = Math.floor((Date.now() - new Date(progress.startedAt).getTime()) / 1000);
-    const remainingTime = Math.max(0, contest.duration * 60 - elapsedSeconds);
-
     return successResponse({
       started: true,
       progress,
-      remainingTime,
-      contest: { title: contest.title, duration: contest.duration, sections: contest.sections },
+      sectionStatuses: {
+        mcq: progress.mcqProgress?.sectionStatus || "NOT_STARTED",
+        coding: progress.codingProgress?.sectionStatus || "NOT_STARTED",
+        forms: progress.formsProgress?.sectionStatus || "NOT_STARTED",
+      },
+      contest: {
+        title: contest.title,
+        duration: contest.duration,
+        sections: contest.sections,
+        status: contest.status,
+      },
     });
   } catch (error: any) {
     if (error.message === "NOT_AUTHENTICATED") return errorResponse("Not authorized", 401);

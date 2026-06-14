@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import Result from "@/lib/models/Result";
 import Contest from "@/lib/models/Contest";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/leaderboard/[contestId]/stats — Contest statistics (public)
 export async function GET(
@@ -10,6 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ contestId: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.PUBLIC_READ);
+    if (limited) return limited;
+
     const { contestId } = await params;
     await connectDB();
 

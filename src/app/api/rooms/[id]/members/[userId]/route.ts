@@ -3,12 +3,16 @@ import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string; userId: string }> };
 
 // DELETE /api/rooms/[id]/members/[userId] — Remove member (owner or admin)
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const reqUser = await requireAuth(request);
     const { id, userId } = await params;
     await connectDB();

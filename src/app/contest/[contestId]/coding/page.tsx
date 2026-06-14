@@ -47,10 +47,22 @@ export default function CodingSectionPage() {
   const { contestId } = useParams<{ contestId: string }>();
   const router = useRouter();
   const { token } = useAuth();
-  const { formattedTime, remainingTime, progress } = useContestTimer();
+  const {
+    activeSectionTimer,
+    activeSectionFormatted,
+    progress,
+    sectionStatuses,
+    startSection,
+    submitSection,
+  } = useContestTimer();
 
-  // Block re-entry if submitted or terminated
+  // Block re-entry if section already submitted
   useEffect(() => {
+    if (sectionStatuses.coding === "SUBMITTED") {
+      toast.error("Coding section already submitted. Cannot re-enter.");
+      router.replace(`/contest/${contestId}/hub`);
+      return;
+    }
     if (progress) {
       if (
         progress.status === "SUBMITTED" ||
@@ -64,7 +76,17 @@ export default function CodingSectionPage() {
         router.replace(`/contest/${contestId}/review`);
       }
     }
-  }, [progress, contestId, router]);
+  }, [progress, sectionStatuses, contestId, router]);
+
+  // Start section timer on mount
+  useEffect(() => {
+    if (sectionStatuses.coding !== "SUBMITTED") {
+      startSection("coding").catch(() => {
+        router.replace(`/contest/${contestId}/hub`);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [problems, setProblems] = useState<any[]>([]);
   const [currentProblem, setCurrentProblem] = useState(0);
@@ -435,7 +457,20 @@ export default function CodingSectionPage() {
   }
 
   const problem = problems[currentProblem];
-  const isTimeLow = (remainingTime ?? 0) < 300;
+  const isTimeLow = (activeSectionTimer ?? 0) < 300;
+
+  const handleSubmitCodingSection = async () => {
+    const confirmed = window.confirm(
+      "Submitting will lock this section. You cannot re-enter. Continue?"
+    );
+    if (!confirmed) return;
+    try {
+      await submitSection("coding");
+      router.push(`/contest/${contestId}/hub`);
+    } catch {
+      toast.error("Failed to submit coding section");
+    }
+  };
 
   return (
     <div
@@ -454,13 +489,13 @@ export default function CodingSectionPage() {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
-              onClick={() => router.push(`/contest/${contestId}/hub`)}
+              onClick={handleSubmitCodingSection}
               className="flex items-center gap-1 flex-shrink-0 transition-colors"
               style={{ color: "var(--foreground-secondary)" }}
-              aria-label="Back to hub"
+              aria-label="Submit and back to hub"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Hub</span>
+              <span className="hidden sm:inline">Submit & Hub</span>
             </button>
             <h1
               className="text-sm sm:text-lg font-bold truncate"
@@ -484,22 +519,24 @@ export default function CodingSectionPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <div
-              className={`flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-mono text-sm sm:text-lg font-semibold ${
-                isTimeLow ? "animate-pulse" : ""
-              }`}
-              style={{
-                background: isTimeLow
-                  ? "rgba(239,68,68,0.2)"
-                  : "var(--background-secondary)",
-                color: isTimeLow ? "#ef4444" : "var(--foreground)",
-              }}
-              role="timer"
-              aria-live="polite"
-            >
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>{formattedTime}</span>
-            </div>
+            {activeSectionTimer !== null && (
+              <div
+                className={`flex items-center gap-1.5 px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-mono text-sm sm:text-lg font-semibold ${
+                  isTimeLow ? "animate-pulse" : ""
+                }`}
+                style={{
+                  background: isTimeLow
+                    ? "rgba(239,68,68,0.2)"
+                    : "var(--background-secondary)",
+                  color: isTimeLow ? "#ef4444" : "var(--foreground)",
+                }}
+                role="timer"
+                aria-live="polite"
+              >
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>{activeSectionFormatted}</span>
+              </div>
+            )}
             <span
               className="text-sm hidden sm:block"
               style={{ color: "var(--foreground-secondary)" }}

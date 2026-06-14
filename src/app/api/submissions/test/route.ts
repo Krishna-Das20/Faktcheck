@@ -2,20 +2,24 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import CodingProblem from "@/lib/models/CodingProblem";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
 import { submitToJudge0 } from "@/lib/judge0";
+import { testRunSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/submissions/test — Test run code (without saving)
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(request);
-    await connectDB();
-    const body = await request.json();
-    const { problemId, sourceCode, languageId, input } = body;
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_EXECUTE);
+    if (limited) return limited;
 
-    if (!sourceCode || !languageId) {
-      return errorResponse("Source code and language are required", 400);
-    }
+    await requireAuth(request);
+
+    const { data, error } = await validateBody(request, testRunSchema);
+    if (error) return error;
+
+    await connectDB();
+    const { problemId, sourceCode, languageId, input } = data;
 
     try {
       const result = await submitToJudge0(

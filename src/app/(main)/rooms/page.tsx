@@ -177,7 +177,7 @@ export default function MyRoomsPage() {
                   >
                     <div className="flex items-center gap-1 text-sm text-soft-ui">
                       <Users className="w-4 h-4" />
-                      <span>{room.participantCount || room.participants?.length || 0} members</span>
+                      <span>{room.memberCount || (1 + (room.coOrganisers?.length || 0) + (room.participants?.length || 0))} members</span>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); copyRoomCode(room.shortCode); }}

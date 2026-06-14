@@ -7,7 +7,9 @@ import MCQSubmission from "@/lib/models/MCQSubmission";
 import Submission from "@/lib/models/Submission";
 import Result from "@/lib/models/Result";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { finalSubmitSchema } from "@/lib/validations";
 
 // Grace period (seconds) for final submit — accommodates auto-submit network delays
 const SUBMIT_GRACE_SECONDS = 60;
@@ -17,11 +19,17 @@ type Params = { params: Promise<{ id: string }> };
 // POST /api/contests/[id]/submit
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_SUBMIT);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
 
-    const { mcqAnswers } = await request.json();
+    const { data, error } = await validateBody(request, finalSubmitSchema);
+    if (error) return error;
+
+    const { mcqAnswers } = data;
 
     const progress = await ContestProgress.findOne({ contestId: id, userId: user._id });
     if (!progress) return errorResponse("Contest not started");
@@ -54,8 +62,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     // Save MCQ answers
-    if (mcqAnswers?.length > 0) {
-      progress.mcqProgress.answers = mcqAnswers;
+    if (mcqAnswers && mcqAnswers.length > 0) {
+      progress.mcqProgress.answers = mcqAnswers as any;
       await MCQSubmission.findOneAndUpdate(
         { contestId: id, userId: user._id },
         { contestId: id, userId: user._id, answers: mcqAnswers, submittedAt: now },
@@ -68,7 +76,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Calculate MCQ Score
     let mcqScore = 0;
     const mcqAnswerDetails: any[] = [];
-    if (mcqAnswers?.length > 0) {
+    if (mcqAnswers && mcqAnswers.length > 0) {
       for (const answer of mcqAnswers) {
         const mcq = await MCQ.findById(answer.mcqId);
         if (mcq) {

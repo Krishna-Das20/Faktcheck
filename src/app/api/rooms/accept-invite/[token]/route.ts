@@ -3,12 +3,16 @@ import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ token: string }> };
 
 // POST /api/rooms/accept-invite/[token] — Accept co-organiser invite
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { token } = await params;
     await connectDB();

@@ -4,6 +4,7 @@ import CodingProblem from "@/lib/models/CodingProblem";
 import ContestCodingProblem from "@/lib/models/ContestCodingProblem";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/coding/contest/[contestId]/add-from-library — add library problems to a contest
 export async function POST(
@@ -11,6 +12,9 @@ export async function POST(
   { params }: { params: Promise<{ contestId: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     const { contestId } = await params;
     await connectDB();

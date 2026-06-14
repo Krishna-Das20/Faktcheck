@@ -10,6 +10,7 @@ import Submission from "@/lib/models/Submission";
 import FormSubmission from "@/lib/models/FormSubmission";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/leaderboard/[contestId]/user/[userId]/details
 export async function GET(
@@ -17,6 +18,9 @@ export async function GET(
   { params }: { params: Promise<{ contestId: string; userId: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const { contestId, userId } = await params;
     await connectDB();

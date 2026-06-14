@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowRight, Award, Code2, FileText, ShieldCheck, Trophy, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -69,6 +70,80 @@ const platformColumns = [
     stat: "Private rooms",
   },
 ];
+
+/* ── Count-up hook — animates from 0 → target when ref is in viewport ── */
+function useCountUp(target: number, duration = 2000) {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasStarted) {
+          setHasStarted(true);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasStarted]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    let start: number | null = null;
+    let raf: number;
+
+    const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
+
+    const step = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const elapsed = timestamp - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeOutQuart(progress);
+
+      setCount(Math.floor(easedProgress * target));
+
+      if (progress < 1) {
+        raf = requestAnimationFrame(step);
+      } else {
+        setCount(target);
+      }
+    };
+
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [hasStarted, target, duration]);
+
+  return { count, ref };
+}
+
+/* ── Animated Metric component ── */
+function AnimatedMetric({ value, label }: { value: string; label: string }) {
+  const match = value.match(/^(\d+)(\D*)$/);
+  const target = match ? parseInt(match[1], 10) : 0;
+  const suffix = match ? match[2] : "";
+  const { count, ref } = useCountUp(target);
+
+  return (
+    <div className="flex items-baseline gap-2">
+      <span
+        ref={ref}
+        className="home-hero-metric-value text-3xl font-bold text-strong sm:text-4xl tabular-nums"
+      >
+        {count}{suffix}
+      </span>
+      <span className="home-hero-metric-label text-muted-ui text-xs uppercase tracking-[0.15em]">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -156,14 +231,11 @@ export default function HomePage() {
 
             <div className="flex flex-wrap justify-center gap-6 pt-6 sm:gap-10">
               {metrics.map((metric) => (
-                <div key={metric.label} className="flex items-baseline gap-2">
-                  <span className="home-hero-metric-value text-3xl font-bold text-strong sm:text-4xl">
-                    {metric.value}
-                  </span>
-                  <span className="home-hero-metric-label text-muted-ui text-xs uppercase tracking-[0.15em]">
-                    {metric.label}
-                  </span>
-                </div>
+                <AnimatedMetric
+                  key={metric.label}
+                  value={metric.value}
+                  label={metric.label}
+                />
               ))}
             </div>
           </section>

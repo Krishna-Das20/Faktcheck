@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import Form from "@/lib/models/Form";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/forms/[id] — Get form by ID
 export async function GET(
@@ -10,12 +11,18 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
+    await requireAdminOrOrganiser(request);
     await connectDB();
     const { id } = await params;
     const form = await Form.findById(id).populate("createdBy", "name email");
     if (!form) return errorResponse("Form not found", 404);
     return successResponse({ form });
   } catch (error: any) {
+    if (error.message === "NOT_AUTHENTICATED") return errorResponse("Not authorized", 401);
+    if (error.message === "NOT_AUTHORIZED") return errorResponse("Admin/Organiser only", 403);
     console.error("Get form error:", error);
     return errorResponse("Server error", 500);
   }
@@ -27,6 +34,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();
@@ -50,6 +60,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();

@@ -3,8 +3,10 @@ import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import User from "@/lib/models/User";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
 import { sendCoOrganiserInviteEmail } from "@/lib/email";
+import { inviteSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 import crypto from "crypto";
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,12 +14,17 @@ type Params = { params: Promise<{ id: string }> };
 // POST /api/rooms/[id]/invite — Invite co-organiser (owner only)
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const reqUser = await requireAuth(request);
     const { id } = await params;
-    await connectDB();
 
-    const { email } = await request.json();
-    if (!email) return errorResponse("Email is required");
+    const { data, error } = await validateBody(request, inviteSchema);
+    if (error) return error;
+
+    await connectDB();
+    const email = data.email;
 
     const room = await Room.findById(id);
     if (!room) return errorResponse("Room not found", 404);

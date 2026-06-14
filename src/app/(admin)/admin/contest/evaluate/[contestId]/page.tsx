@@ -32,7 +32,8 @@ export default function EvaluateContestPage() {
   const [contest, setContest] = useState<any>(null);
   const [forms, setForms] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedSubmission, setExpandedSubmission] = useState<any>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evaluations, setEvaluations] = useState<
     Record<string, { manualScore: number; feedback: string }>
@@ -69,11 +70,12 @@ export default function EvaluateContestPage() {
     fetchData();
   }, [contestId]);
 
-  /* ───── Open a single submission detail ───── */
-  const openSubmission = async (submission: any) => {
-    // If already selected, toggle off
-    if (selectedSubmission?._id === submission._id) {
-      setSelectedSubmission(null);
+  /* ───── Open a single submission detail (inline accordion) ───── */
+  const toggleSubmission = async (submission: any) => {
+    // If already expanded, collapse
+    if (expandedId === submission._id) {
+      setExpandedId(null);
+      setExpandedSubmission(null);
       return;
     }
 
@@ -87,7 +89,8 @@ export default function EvaluateContestPage() {
         return;
       }
       const sub = data.submission;
-      setSelectedSubmission(sub);
+      setExpandedId(submission._id);
+      setExpandedSubmission(sub);
 
       // Initialize evaluations with current values for manual fields
       const initialEvals: Record<string, { manualScore: number; feedback: string }> = {};
@@ -128,6 +131,7 @@ export default function EvaluateContestPage() {
 
   /* ───── Submit evaluation ───── */
   const submitEvaluation = async () => {
+    if (!expandedSubmission) return;
     try {
       setEvaluating(true);
       const evalArray = Object.entries(evaluations).map(([fieldId, data]) => ({
@@ -137,7 +141,7 @@ export default function EvaluateContestPage() {
       }));
 
       const res = await fetch(
-        `/api/form-submissions/${selectedSubmission._id}/evaluate`,
+        `/api/form-submissions/${expandedSubmission._id}/evaluate`,
         {
           method: "PUT",
           headers: {
@@ -150,7 +154,8 @@ export default function EvaluateContestPage() {
 
       if (res.ok) {
         toast.success("Evaluation submitted successfully!");
-        setSelectedSubmission(null);
+        setExpandedId(null);
+        setExpandedSubmission(null);
         fetchData();
       } else {
         const err = await res.json();
@@ -177,16 +182,277 @@ export default function EvaluateContestPage() {
   /* ───── Loading state ───── */
   if (loading)
     return (
-      <div
-        className="page-shell flex items-center justify-center"
-       
-      >
+      <div className="page-shell flex items-center justify-center">
         <div
           className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
           style={{ borderTopColor: "var(--primary)" }}
         />
       </div>
     );
+
+  /* ───── Inline evaluation detail panel for a submission ───── */
+  const renderEvaluationPanel = () => {
+    if (!expandedSubmission) return null;
+
+    return (
+      <div
+        className="mt-2 rounded-xl p-5"
+        style={{
+          background: "var(--background-card)",
+          border: "1px solid var(--primary)",
+          borderTop: "3px solid var(--primary)",
+        }}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: "var(--foreground)" }}
+          >
+            Evaluate: {expandedSubmission.userId?.name}
+          </h3>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="flex items-center gap-1" style={{ color: "#22C55E" }}>
+              <CheckCircle className="w-4 h-4" /> Auto-scored
+            </span>
+            <span className="flex items-center gap-1" style={{ color: "#EAB308" }}>
+              <Clock className="w-4 h-4" /> Manual evaluation
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {expandedSubmission.responses?.map((response: any) => {
+            const field = getFieldInfo(
+              response.fieldId,
+              expandedSubmission.formId
+            );
+            const isAuto = response.isAutoScored;
+
+            return (
+              <div
+                key={response.fieldId}
+                className="p-5 rounded-lg"
+                style={{
+                  background: isAuto
+                    ? "rgba(34,197,94,0.04)"
+                    : "rgba(234,179,8,0.04)",
+                  borderLeft: `4px solid ${isAuto ? "#22C55E" : "#EAB308"}`,
+                }}
+              >
+                {/* Side-by-side grid: Question | Answer */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Left: Question Details */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-medium"
+                        style={{
+                          background: isAuto
+                            ? "rgba(34,197,94,0.15)"
+                            : "rgba(234,179,8,0.15)",
+                          color: isAuto ? "#22C55E" : "#EAB308",
+                        }}
+                      >
+                        {field?.type || "TEXT"}
+                      </span>
+                      <span
+                        className="text-sm"
+                        style={{ color: "var(--foreground-secondary)" }}
+                      >
+                        Max: {response.maxMarks} marks
+                      </span>
+                    </div>
+                    <h4
+                      className="font-semibold text-lg mb-2"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {field?.label || "Unknown Field"}
+                    </h4>
+                    {field?.placeholder && (
+                      <p
+                        className="text-sm italic"
+                        style={{ color: "var(--foreground-secondary)" }}
+                      >
+                        Hint: {field.placeholder}
+                      </p>
+                    )}
+                    {(field?.type === "RADIO" || field?.type === "CHECKBOX") &&
+                      field?.options?.length > 0 && (
+                        <div className="mt-2">
+                          <p
+                            className="text-sm mb-1"
+                            style={{ color: "var(--foreground-secondary)" }}
+                          >
+                            Options:
+                          </p>
+                          <ul className="text-sm pl-4 list-disc">
+                            {field.options.map((opt: string, i: number) => (
+                              <li
+                                key={i}
+                                style={{
+                                  color: field.correctAnswers?.includes(opt)
+                                    ? "#22C55E"
+                                    : "var(--foreground-secondary)",
+                                }}
+                              >
+                                {opt}{" "}
+                                {field.correctAnswers?.includes(opt) && "✓"}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Right: Participant Answer + Scoring */}
+                  <div
+                    className="rounded-lg p-4"
+                    style={{ background: "var(--background-secondary)" }}
+                  >
+                    <p
+                      className="text-sm mb-2"
+                      style={{ color: "var(--foreground-secondary)" }}
+                    >
+                      Participant&apos;s Answer:
+                    </p>
+                    <div
+                      className="mb-4 p-3 rounded min-h-[60px]"
+                      style={{
+                        background: "var(--background)",
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      {Array.isArray(response.value) ? (
+                        response.value.join(", ")
+                      ) : field?.type === "URL" && response.value ? (
+                        <a
+                          href={
+                            response.value.startsWith("http")
+                              ? response.value
+                              : `https://${response.value}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline break-all flex items-center gap-1"
+                          style={{ color: "var(--primary)" }}
+                        >
+                          {response.value}
+                          <ExternalLink className="w-3 h-3 inline" />
+                        </a>
+                      ) : (
+                        response.value || (
+                          <em style={{ color: "var(--foreground-secondary)" }}>
+                            No response
+                          </em>
+                        )
+                      )}
+                    </div>
+
+                    {/* Scoring Section */}
+                    <div
+                      className="pt-4"
+                      style={{ borderTop: "1px solid var(--border)" }}
+                    >
+                      {isAuto ? (
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: "var(--foreground-secondary)" }}>
+                            Auto Score:
+                          </span>
+                          <span
+                            className="font-bold text-lg"
+                            style={{ color: "#22C55E" }}
+                          >
+                            {response.autoScore} / {response.maxMarks}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              style={{ color: "var(--foreground-secondary)" }}
+                            >
+                              Score:
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={response.maxMarks}
+                              value={
+                                evaluations[response.fieldId]?.manualScore ?? 0
+                              }
+                              onChange={(e) =>
+                                handleScoreChange(
+                                  response.fieldId,
+                                  parseInt(e.target.value) || 0,
+                                  response.maxMarks
+                                )
+                              }
+                              className="w-24 px-3 py-2 rounded-lg text-center text-lg font-bold"
+                              style={inputStyle}
+                            />
+                            <span
+                              style={{ color: "var(--foreground-secondary)" }}
+                            >
+                              / {response.maxMarks}
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={
+                              evaluations[response.fieldId]?.feedback || ""
+                            }
+                            onChange={(e) =>
+                              handleFeedbackChange(
+                                response.fieldId,
+                                e.target.value
+                              )
+                            }
+                            placeholder="Add feedback for participant..."
+                            className="w-full px-3 py-2 rounded-lg text-sm"
+                            style={inputStyle}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Action Buttons */}
+        <div
+          className="flex justify-end gap-3 mt-6 pt-4"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          <button
+            onClick={() => {
+              setExpandedId(null);
+              setExpandedSubmission(null);
+            }}
+            className="px-5 py-2 rounded-xl font-semibold text-sm cursor-pointer"
+            style={{
+              background: "var(--background-secondary)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submitEvaluation}
+            disabled={evaluating}
+            className="px-5 py-2 rounded-xl text-white font-semibold text-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            style={{ background: "var(--primary)" }}
+          >
+            <Send className="w-4 h-4" />
+            {evaluating ? "Submitting..." : "Submit Evaluation"}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   /* ───── Main UI ───── */
   return (
@@ -270,7 +536,7 @@ export default function EvaluateContestPage() {
           </div>
         </div>
 
-        {/* Submissions List */}
+        {/* Submissions List with Inline Evaluation */}
         <div
           className="rounded-xl p-5 mb-6"
           style={{
@@ -298,341 +564,90 @@ export default function EvaluateContestPage() {
           ) : (
             <div className="space-y-2">
               {submissions.map((sub) => (
-                <div
-                  key={sub._id}
-                  className="flex items-center justify-between p-4 rounded-lg cursor-pointer transition-colors"
-                  style={{
-                    background:
-                      selectedSubmission?._id === sub._id
-                        ? "rgba(255,107,53,0.1)"
-                        : "var(--background-secondary)",
-                    border:
-                      selectedSubmission?._id === sub._id
-                        ? "1px solid var(--primary)"
-                        : "1px solid transparent",
-                  }}
-                  onClick={() => openSubmission(sub)}
-                >
-                  <div className="flex items-center gap-3">
-                    <User
-                      className="w-5 h-5"
-                      style={{ color: "var(--foreground-secondary)" }}
-                    />
-                    <div>
-                      <div
-                        className="font-medium"
-                        style={{ color: "var(--foreground)" }}
-                      >
-                        {sub.userId?.name || "Unknown"}
-                      </div>
-                      <div
-                        className="text-sm"
-                        style={{ color: "var(--foreground-secondary)" }}
-                      >
-                        {sub.userId?.email}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div
-                        className="font-semibold"
-                        style={{ color: "var(--foreground)" }}
-                      >
-                        {sub.totalScore || 0} / {sub.maxPossibleScore || 0}
-                      </div>
-                      <div
-                        className="text-xs"
-                        style={{ color: "var(--foreground-secondary)" }}
-                      >
-                        Auto: {sub.totalAutoScore || 0} | Manual:{" "}
-                        {sub.totalManualScore || 0}
-                      </div>
-                    </div>
-                    <span
-                      className="px-3 py-1 rounded-full text-xs font-semibold"
-                      style={{
-                        background: sub.isFullyEvaluated
-                          ? "rgba(34,197,94,0.15)"
-                          : "rgba(234,179,8,0.15)",
-                        color: sub.isFullyEvaluated ? "#22C55E" : "#EAB308",
-                      }}
-                    >
-                      {sub.isFullyEvaluated ? "Evaluated" : "Pending"}
-                    </span>
-                    {selectedSubmission?._id === sub._id ? (
-                      <ChevronUp
+                <div key={sub._id}>
+                  {/* Participant Row */}
+                  <div
+                    className="flex items-center justify-between p-4 rounded-lg cursor-pointer transition-colors"
+                    style={{
+                      background:
+                        expandedId === sub._id
+                          ? "rgba(255,107,53,0.1)"
+                          : "var(--background-secondary)",
+                      border:
+                        expandedId === sub._id
+                          ? "1px solid var(--primary)"
+                          : "1px solid transparent",
+                    }}
+                    onClick={() => toggleSubmission(sub)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <User
                         className="w-5 h-5"
                         style={{ color: "var(--foreground-secondary)" }}
                       />
-                    ) : (
-                      <ChevronDown
-                        className="w-5 h-5"
-                        style={{ color: "var(--foreground-secondary)" }}
-                      />
-                    )}
+                      <div>
+                        <div
+                          className="font-medium"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {sub.userId?.name || "Unknown"}
+                        </div>
+                        <div
+                          className="text-sm"
+                          style={{ color: "var(--foreground-secondary)" }}
+                        >
+                          {sub.userId?.email}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div
+                          className="font-semibold"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {sub.totalScore || 0} / {sub.maxPossibleScore || 0}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "var(--foreground-secondary)" }}
+                        >
+                          Auto: {sub.totalAutoScore || 0} | Manual:{" "}
+                          {sub.totalManualScore || 0}
+                        </div>
+                      </div>
+                      <span
+                        className="px-3 py-1 rounded-full text-xs font-semibold"
+                        style={{
+                          background: sub.isFullyEvaluated
+                            ? "rgba(34,197,94,0.15)"
+                            : "rgba(234,179,8,0.15)",
+                          color: sub.isFullyEvaluated ? "#22C55E" : "#EAB308",
+                        }}
+                      >
+                        {sub.isFullyEvaluated ? "Evaluated" : "Pending"}
+                      </span>
+                      {expandedId === sub._id ? (
+                        <ChevronUp
+                          className="w-5 h-5"
+                          style={{ color: "var(--foreground-secondary)" }}
+                        />
+                      ) : (
+                        <ChevronDown
+                          className="w-5 h-5"
+                          style={{ color: "var(--foreground-secondary)" }}
+                        />
+                      )}
+                    </div>
                   </div>
+
+                  {/* Inline Evaluation Panel — renders directly below this participant */}
+                  {expandedId === sub._id && renderEvaluationPanel()}
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* ───── Evaluation Panel (side-by-side Question | Answer) ───── */}
-        {selectedSubmission && (
-          <div
-            className="rounded-xl p-5"
-            style={{
-              background: "var(--background-card)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3
-                className="text-lg font-semibold"
-                style={{ color: "var(--foreground)" }}
-              >
-                Evaluate: {selectedSubmission.userId?.name}
-              </h3>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1" style={{ color: "#22C55E" }}>
-                  <CheckCircle className="w-4 h-4" /> Auto-scored
-                </span>
-                <span className="flex items-center gap-1" style={{ color: "#EAB308" }}>
-                  <Clock className="w-4 h-4" /> Manual evaluation
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {selectedSubmission.responses?.map((response: any) => {
-                const field = getFieldInfo(
-                  response.fieldId,
-                  selectedSubmission.formId
-                );
-                const isAuto = response.isAutoScored;
-
-                return (
-                  <div
-                    key={response.fieldId}
-                    className="p-5 rounded-lg"
-                    style={{
-                      background: isAuto
-                        ? "rgba(34,197,94,0.04)"
-                        : "rgba(234,179,8,0.04)",
-                      borderLeft: `4px solid ${isAuto ? "#22C55E" : "#EAB308"}`,
-                    }}
-                  >
-                    {/* Side-by-side grid: Question | Answer */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Left: Question Details */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className="px-2 py-0.5 rounded text-xs font-medium"
-                            style={{
-                              background: isAuto
-                                ? "rgba(34,197,94,0.15)"
-                                : "rgba(234,179,8,0.15)",
-                              color: isAuto ? "#22C55E" : "#EAB308",
-                            }}
-                          >
-                            {field?.type || "TEXT"}
-                          </span>
-                          <span
-                            className="text-sm"
-                            style={{ color: "var(--foreground-secondary)" }}
-                          >
-                            Max: {response.maxMarks} marks
-                          </span>
-                        </div>
-                        <h4
-                          className="font-semibold text-lg mb-2"
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          {field?.label || "Unknown Field"}
-                        </h4>
-                        {field?.placeholder && (
-                          <p
-                            className="text-sm italic"
-                            style={{ color: "var(--foreground-secondary)" }}
-                          >
-                            Hint: {field.placeholder}
-                          </p>
-                        )}
-                        {(field?.type === "RADIO" || field?.type === "CHECKBOX") &&
-                          field?.options?.length > 0 && (
-                            <div className="mt-2">
-                              <p
-                                className="text-sm mb-1"
-                                style={{ color: "var(--foreground-secondary)" }}
-                              >
-                                Options:
-                              </p>
-                              <ul className="text-sm pl-4 list-disc">
-                                {field.options.map((opt: string, i: number) => (
-                                  <li
-                                    key={i}
-                                    style={{
-                                      color: field.correctAnswers?.includes(opt)
-                                        ? "#22C55E"
-                                        : "var(--foreground-secondary)",
-                                    }}
-                                  >
-                                    {opt}{" "}
-                                    {field.correctAnswers?.includes(opt) && "✓"}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                      </div>
-
-                      {/* Right: Participant Answer + Scoring */}
-                      <div
-                        className="rounded-lg p-4"
-                        style={{ background: "var(--background-secondary)" }}
-                      >
-                        <p
-                          className="text-sm mb-2"
-                          style={{ color: "var(--foreground-secondary)" }}
-                        >
-                          Participant&apos;s Answer:
-                        </p>
-                        <div
-                          className="mb-4 p-3 rounded min-h-[60px]"
-                          style={{
-                            background: "var(--background)",
-                            color: "var(--foreground)",
-                          }}
-                        >
-                          {Array.isArray(response.value) ? (
-                            response.value.join(", ")
-                          ) : field?.type === "URL" && response.value ? (
-                            <a
-                              href={
-                                response.value.startsWith("http")
-                                  ? response.value
-                                  : `https://${response.value}`
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline break-all flex items-center gap-1"
-                              style={{ color: "var(--primary)" }}
-                            >
-                              {response.value}
-                              <ExternalLink className="w-3 h-3 inline" />
-                            </a>
-                          ) : (
-                            response.value || (
-                              <em style={{ color: "var(--foreground-secondary)" }}>
-                                No response
-                              </em>
-                            )
-                          )}
-                        </div>
-
-                        {/* Scoring Section */}
-                        <div
-                          className="pt-4"
-                          style={{ borderTop: "1px solid var(--border)" }}
-                        >
-                          {isAuto ? (
-                            <div className="flex items-center justify-between">
-                              <span style={{ color: "var(--foreground-secondary)" }}>
-                                Auto Score:
-                              </span>
-                              <span
-                                className="font-bold text-lg"
-                                style={{ color: "#22C55E" }}
-                              >
-                                {response.autoScore} / {response.maxMarks}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-3">
-                                <span
-                                  style={{ color: "var(--foreground-secondary)" }}
-                                >
-                                  Score:
-                                </span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={response.maxMarks}
-                                  value={
-                                    evaluations[response.fieldId]?.manualScore ?? 0
-                                  }
-                                  onChange={(e) =>
-                                    handleScoreChange(
-                                      response.fieldId,
-                                      parseInt(e.target.value) || 0,
-                                      response.maxMarks
-                                    )
-                                  }
-                                  className="w-24 px-3 py-2 rounded-lg text-center text-lg font-bold"
-                                  style={inputStyle}
-                                />
-                                <span
-                                  style={{ color: "var(--foreground-secondary)" }}
-                                >
-                                  / {response.maxMarks}
-                                </span>
-                              </div>
-                              <input
-                                type="text"
-                                value={
-                                  evaluations[response.fieldId]?.feedback || ""
-                                }
-                                onChange={(e) =>
-                                  handleFeedbackChange(
-                                    response.fieldId,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Add feedback for participant..."
-                                className="w-full px-3 py-2 rounded-lg text-sm"
-                                style={inputStyle}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Action Buttons */}
-            <div
-              className="flex justify-end gap-3 mt-6 pt-4"
-              style={{ borderTop: "1px solid var(--border)" }}
-            >
-              <button
-                onClick={() => setSelectedSubmission(null)}
-                className="px-5 py-2 rounded-xl font-semibold text-sm cursor-pointer"
-                style={{
-                  background: "var(--background-secondary)",
-                  color: "var(--foreground)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitEvaluation}
-                disabled={evaluating}
-                className="px-5 py-2 rounded-xl text-white font-semibold text-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                style={{ background: "var(--primary)" }}
-              >
-                <Send className="w-4 h-4" />
-                {evaluating ? "Submitting..." : "Submit Evaluation"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

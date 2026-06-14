@@ -2,25 +2,24 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { hashPassword } from "@/lib/auth";
-import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { resetPasswordSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/auth/reset-password
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.AUTH_SENSITIVE);
+    if (limited) return limited;
+
+    const { data, error } = await validateBody(request, resetPasswordSchema);
+    if (error) return error;
+
     await connectDB();
-    const { token, password } = await parseBody<{ token: string; password: string }>(request);
-
-    if (!token || !password) {
-      return errorResponse("Please provide token and new password");
-    }
-
-    if (password.length < 6) {
-      return errorResponse("Password must be at least 6 characters");
-    }
 
     // Find user with valid token
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: data.token,
       resetPasswordExpires: { $gt: new Date() },
     });
 
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash new password
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(data.password);
 
     // Update user
     user.password = hashedPassword;

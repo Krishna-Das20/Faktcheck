@@ -7,8 +7,8 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   Plus, Trophy, Users, Calendar, Code, FileQuestion, Edit,
-  Trash2, Eye, BarChart3, UserCheck, Clock, ClipboardList,
-  StopCircle, CheckSquare, Globe, DoorOpen,
+  Trash2, Eye, BarChart3, UserCheck, Clock, FileText,
+  StopCircle, FileSpreadsheet, Globe, DoorOpen,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -146,7 +146,7 @@ export default function AdminDashboardPage() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                    {["Contest", "Host", "Status", "Schedule", "Participants", "Sections", "Actions"].map((h) => (
+                    {["Contest", "Host", "Status", "Schedule", "Participants", "Access", "Sections", "Actions"].map((h) => (
                       <th key={h} className="text-left py-3 px-4 text-sm font-semibold" style={{ color: "var(--foreground-secondary)" }}>{h}</th>
                     ))}
                   </tr>
@@ -166,8 +166,10 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-4 px-4 text-sm" style={{ color: "var(--foreground-secondary)" }}>{c.createdBy?.name || "Admin"}</td>
                         <td className="py-4 px-4">
-                          <span className="px-2 py-1 rounded text-xs font-semibold" style={statusStyle(status)}>{status}</span>
-                          {c.verificationStatus === "PENDING" && <span className="ml-1 px-2 py-1 rounded text-xs font-semibold" style={{ background: "rgba(234,179,8,0.2)", color: "#EAB308" }}>PENDING</span>}
+                          <div className="flex flex-col gap-2">
+                            <span className="px-2 py-1 rounded text-xs font-semibold w-fit" style={statusStyle(status)}>{status}</span>
+                            {c.verificationStatus && <span className="px-2 py-1 rounded text-xs font-semibold w-fit" style={c.verificationStatus === "APPROVED" ? { background: "rgba(107,114,128,0.2)", color: "#9CA3AF" } : c.verificationStatus === "PENDING" ? { background: "rgba(234,179,8,0.2)", color: "#EAB308" } : { background: "rgba(239,68,68,0.2)", color: "#EF4444" }}>{c.verificationStatus}</span>}
+                          </div>
                         </td>
                         <td className="py-4 px-4 text-xs" style={{ color: "var(--foreground-secondary)" }}>
                           <div>{new Date(c.startTime).toLocaleDateString()} {new Date(c.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
@@ -181,6 +183,19 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="py-4 px-4">
+                          {c.roomId ? (
+                            <Link href={`/rooms/${c.roomId._id}`} className="inline-flex items-center gap-2 text-sm transition-colors" style={{ color: "var(--primary)" }}>
+                              <DoorOpen className="w-4 h-4" />
+                              {c.roomId.name || "Room"}
+                            </Link>
+                          ) : (
+                            <span className="inline-flex items-center gap-2 text-sm" style={{ color: "var(--foreground-secondary)" }}>
+                              <Globe className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                              Public
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
                           <div className="flex gap-1">
                             {c.sections?.mcq?.enabled && <span className="px-2 py-0.5 rounded text-xs" style={{ background: "rgba(168,85,247,0.2)", color: "#A855F7" }}>MCQ</span>}
                             {c.sections?.coding?.enabled && <span className="px-2 py-0.5 rounded text-xs" style={{ background: "rgba(34,197,94,0.2)", color: "#22C55E" }}>Coding</span>}
@@ -189,13 +204,21 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => router.push(`/contest/${c._id}`)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="View"><Eye className="w-4 h-4" style={{ color: "#3B82F6" }} /></button>
-                            <button onClick={() => router.push(`/leaderboard/${c._id}`)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="Leaderboard"><BarChart3 className="w-4 h-4" style={{ color: "#22C55E" }} /></button>
-                            {status === "LIVE" && <button onClick={() => handleEnd(c._id, c.title)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="End Now"><StopCircle className="w-4 h-4" style={{ color: "#EF4444" }} /></button>}
-                            {c.sections?.mcq?.enabled && <button onClick={() => router.push(`/admin/contest/mcq/${c._id}`)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="Manage MCQs"><FileQuestion className="w-4 h-4" style={{ color: "#A855F7" }} /></button>}
-                            {c.sections?.coding?.enabled && <button onClick={() => router.push(`/admin/contest/coding/${c._id}`)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="Manage Coding"><Code className="w-4 h-4" style={{ color: "#F97316" }} /></button>}
-                            <button onClick={() => router.push(`/admin/contest/edit/${c._id}`)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="Edit"><Edit className="w-4 h-4" style={{ color: "#EAB308" }} /></button>
-                            <button onClick={() => handleDelete(c._id)} className="p-2 rounded-lg transition-colors hover:opacity-80 cursor-pointer" title="Delete"><Trash2 className="w-4 h-4" style={{ color: "#EF4444" }} /></button>
+                            <button onClick={() => router.push(`/contest/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="View"><Eye className="w-4 h-4" style={{ color: "#3B82F6" }} /></button>
+                            <button onClick={() => router.push(`/leaderboard/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Leaderboard"><BarChart3 className="w-4 h-4" style={{ color: "#22C55E" }} /></button>
+                            {status === "LIVE" && <button onClick={() => handleEnd(c._id, c.title)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="End Now"><StopCircle className="w-4 h-4" style={{ color: "#EF4444" }} /></button>}
+                            {c.sections?.mcq?.enabled && <button onClick={() => router.push(`/admin/contest/mcq/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Manage MCQs"><FileQuestion className="w-4 h-4" style={{ color: "#A855F7" }} /></button>}
+                            {c.sections?.coding?.enabled && <button onClick={() => router.push(`/admin/contest/coding/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Manage Coding"><Code className="w-4 h-4" style={{ color: "#F97316" }} /></button>}
+                            {c.sections?.forms?.enabled && (
+                              <>
+                                <button onClick={() => router.push(`/admin/contest/forms/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Manage Forms"><FileText className="w-4 h-4" style={{ color: "#06B6D4" }} /></button>
+                                {(status === "LIVE" || status === "ENDED") && (
+                                  <button onClick={() => router.push(`/admin/contest/evaluate/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Evaluate Forms"><FileSpreadsheet className="w-4 h-4" style={{ color: "#14B8A6" }} /></button>
+                                )}
+                              </>
+                            )}
+                            <button onClick={() => router.push(`/admin/contest/edit/${c._id}`)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Edit"><Edit className="w-4 h-4" style={{ color: "#EAB308" }} /></button>
+                            <button onClick={() => handleDelete(c._id)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer hover:rounded-full" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }} title="Delete"><Trash2 className="w-4 h-4" style={{ color: "#EF4444" }} /></button>
                           </div>
                         </td>
                       </tr>

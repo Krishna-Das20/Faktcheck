@@ -21,6 +21,8 @@ interface IMCQAnswer {
   selectedOptions: number[];
 }
 
+type SectionStatus = "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED";
+
 // ─── Main Interface ───────────────────────────────────────
 
 export interface IContestProgress extends Document {
@@ -31,6 +33,8 @@ export interface IContestProgress extends Document {
   totalTimeSpent: number;
   mcqProgress: {
     sectionStartedAt?: Date;
+    sectionSubmittedAt?: Date;
+    sectionStatus: SectionStatus;
     sectionTimeSpent: number;
     questionTimes: IQuestionTime[];
     categoryTimes: { category: string; timeSpent: number }[];
@@ -38,8 +42,16 @@ export interface IContestProgress extends Document {
   };
   codingProgress: {
     sectionStartedAt?: Date;
+    sectionSubmittedAt?: Date;
+    sectionStatus: SectionStatus;
     sectionTimeSpent: number;
     problemTimes: IProblemTime[];
+  };
+  formsProgress: {
+    sectionStartedAt?: Date;
+    sectionSubmittedAt?: Date;
+    sectionStatus: SectionStatus;
+    sectionTimeSpent: number;
   };
   status: "IN_PROGRESS" | "SUBMITTED" | "TIMED_OUT";
   warningCount: number;
@@ -69,6 +81,8 @@ const problemTimeSchema = new Schema(
   { _id: false }
 );
 
+const sectionStatusEnum = ["NOT_STARTED", "IN_PROGRESS", "SUBMITTED"];
+
 const contestProgressSchema = new Schema<IContestProgress>(
   {
     contestId: {
@@ -92,6 +106,8 @@ const contestProgressSchema = new Schema<IContestProgress>(
     },
     mcqProgress: {
       sectionStartedAt: Date,
+      sectionSubmittedAt: Date,
+      sectionStatus: { type: String, enum: sectionStatusEnum, default: "NOT_STARTED" },
       sectionTimeSpent: { type: Number, default: 0 },
       questionTimes: [questionTimeSchema],
       categoryTimes: [
@@ -110,8 +126,16 @@ const contestProgressSchema = new Schema<IContestProgress>(
     },
     codingProgress: {
       sectionStartedAt: Date,
+      sectionSubmittedAt: Date,
+      sectionStatus: { type: String, enum: sectionStatusEnum, default: "NOT_STARTED" },
       sectionTimeSpent: { type: Number, default: 0 },
       problemTimes: [problemTimeSchema],
+    },
+    formsProgress: {
+      sectionStartedAt: Date,
+      sectionSubmittedAt: Date,
+      sectionStatus: { type: String, enum: sectionStatusEnum, default: "NOT_STARTED" },
+      sectionTimeSpent: { type: Number, default: 0 },
     },
     status: {
       type: String,

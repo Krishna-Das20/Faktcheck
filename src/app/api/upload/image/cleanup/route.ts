@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 /**
  * DELETE /api/upload/image/cleanup?id=<publicId>
@@ -9,6 +10,9 @@ import { deleteFromCloudinary } from "@/lib/cloudinary";
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const publicId = request.nextUrl.searchParams.get("id");
 

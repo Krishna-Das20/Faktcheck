@@ -4,12 +4,17 @@ import Announcement from "@/lib/models/Announcement";
 import Room from "@/lib/models/Room";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { deleteFromCloudinary } from "@/lib/cloudinary";
 
 type Params = { params: Promise<{ id: string; announcementId: string }> };
 
 // PUT /api/rooms/[id]/announcements/[announcementId]
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id, announcementId } = await params;
     await connectDB();
@@ -25,10 +30,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (!announcement) return errorResponse("Announcement not found", 404);
 
     const body = await request.json();
-    const { title, content } = body;
+    const { title, content, attachments, isPinned } = body;
 
     if (title !== undefined) announcement.title = title;
     if (content !== undefined) announcement.content = content;
+    if (attachments !== undefined) announcement.attachments = attachments;
+    if (isPinned !== undefined) announcement.isPinned = isPinned;
 
     await announcement.save();
 
@@ -43,6 +50,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/rooms/[id]/announcements/[announcementId]
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id, announcementId } = await params;
     await connectDB();
@@ -54,8 +64,16 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       return errorResponse("Only room organisers can delete announcements", 403);
     }
 
-    const announcement = await Announcement.findOneAndDelete({ _id: announcementId, roomId: id });
+    const announcement = await Announcement.findOne({ _id: announcementId, roomId: id });
     if (!announcement) return errorResponse("Announcement not found", 404);
+
+    await Promise.all(
+      announcement.attachments.map((attachment) =>
+        deleteFromCloudinary(attachment.publicId, attachment.fileType === "image" ? "image" : "raw")
+      )
+    );
+    announcement.isActive = false;
+    await announcement.save();
 
     return successResponse({ message: "Announcement deleted" });
   } catch (error: any) {

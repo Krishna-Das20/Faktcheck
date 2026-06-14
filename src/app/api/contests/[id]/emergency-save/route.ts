@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { verifyToken } from "@/lib/auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -10,6 +11,9 @@ type Params = { params: Promise<{ id: string }> };
 // Accepts both mcqAnswers and codingDrafts for maximum data preservation
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const { id } = await params;
     const { mcqAnswers, codingDrafts, token } = await request.json();
 

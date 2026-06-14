@@ -2,11 +2,16 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Room from "@/lib/models/Room";
 import { requireAuth, requireAdminOrOrganiser } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { createRoomSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/rooms — list rooms with RBAC filtering
 export async function GET(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     await connectDB();
 
@@ -41,6 +46,7 @@ export async function GET(request: NextRequest) {
     // Add counts
     const roomsWithCounts = rooms.map((room) => ({
       ...room.toObject(),
+      memberCount: 1 + (room.coOrganisers?.length || 0) + (room.participants?.length || 0),
       participantCount: room.participants?.length || 0,
       coOrganiserCount: room.coOrganisers?.length || 0,
     }));
@@ -56,12 +62,17 @@ export async function GET(request: NextRequest) {
 // POST /api/rooms — create room
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAdminOrOrganiser(request);
-    await connectDB();
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
 
-    const body = await request.json();
+    const user = await requireAdminOrOrganiser(request);
+
+    const { data, error } = await validateBody(request, createRoomSchema);
+    if (error) return error;
+
+    await connectDB();
     const room = await Room.create({
-      ...body,
+      ...data,
       owner: user._id,
     });
 

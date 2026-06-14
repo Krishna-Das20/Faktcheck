@@ -4,10 +4,14 @@ import FormSubmission from "@/lib/models/FormSubmission";
 import Form from "@/lib/models/Form";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/form-submissions — Submit a form
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_SUBMIT);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     await connectDB();
 

@@ -45,6 +45,31 @@ export default function ProctorGuard({
   const hasAutoSubmittedRef = useRef(false);
   const warningCountRef = useRef(0);
 
+  // Load persisted warning count from DB on mount (universal across sections)
+  useEffect(() => {
+    if (!token || !enabled) return;
+    const loadWarnings = async () => {
+      try {
+        const res = await fetch(`/api/contests/${contestId}/start`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success && data.progress) {
+          const dbWarnings = data.progress.warningCount || 0;
+          warningCountRef.current = dbWarnings;
+          setWarningCount(dbWarnings);
+          if (dbWarnings >= maxWarnings) {
+            hasAutoSubmittedRef.current = true;
+          }
+        }
+      } catch {
+        console.error("Failed to load warning count");
+      }
+    };
+    loadWarnings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contestId, token, enabled]);
+
   // Request fullscreen
   const enterFullscreen = useCallback(async () => {
     try {

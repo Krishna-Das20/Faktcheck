@@ -5,6 +5,7 @@ import Form from "@/lib/models/Form";
 import Contest from "@/lib/models/Contest";
 import { requireAuth, requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/form-submissions/[id] — Get submission by ID (admin/organiser)
 export async function GET(
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();

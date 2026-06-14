@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import Contest from "@/lib/models/Contest";
+import Room from "@/lib/models/Room";
 import Result from "@/lib/models/Result";
 import ContestProgress from "@/lib/models/ContestProgress";
 import ContestRegistration from "@/lib/models/ContestRegistration";
@@ -13,13 +14,18 @@ import CodingProblem from "@/lib/models/CodingProblem";
 import ContestMCQ from "@/lib/models/ContestMCQ";
 import ContestCodingProblem from "@/lib/models/ContestCodingProblem";
 import { requireAuth, requireAdminOrOrganiser } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { updateContestSchema } from "@/lib/validations";
 
 type Params = { params: Promise<{ id: string }> };
 
 // GET /api/contests/[id]
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.PUBLIC_READ);
+    if (limited) return limited;
+
     const { id } = await params;
     await connectDB();
 
@@ -36,35 +42,70 @@ export async function GET(_request: NextRequest, { params }: Params) {
 // PUT /api/contests/[id]
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();
 
-    // Verify ownership (admin can edit any, organiser only their own)
+    // Verify ownership — matches KK's contestOwner middleware
     if (user.role !== "ADMIN") {
       const existing = await Contest.findById(id);
       if (!existing) return errorResponse("Contest not found", 404);
-      if (existing.createdBy.toString() !== user._id) {
+
+      const isCreator = existing.createdBy.toString() === user._id.toString();
+
+      // Check room co-organiser access
+      let isRoomOrganiser = false;
+      if (!isCreator && existing.roomId) {
+        const room = await Room.findById(existing.roomId);
+        if (room && room.isOrganiser(user._id)) {
+          isRoomOrganiser = true;
+        }
+      }
+
+      if (!isCreator && !isRoomOrganiser) {
         return errorResponse("Not authorized to edit this contest", 403);
+      }
+
+      // Block editing approved public contests (room contests remain editable)
+      if (!existing.roomId && existing.verificationStatus === "APPROVED") {
+        return errorResponse(
+          "Public contest is approved. Only admin can make changes.",
+          403
+        );
       }
     }
 
-    const updateData = await request.json();
+    const { data: updateData, error: valError } = await validateBody(request, updateContestSchema);
+    if (valError) return valError;
+
+    // Build update payload (allow adding computed fields like status)
+    const updatePayload: Record<string, unknown> = { ...updateData };
+
+    // Auto-compute duration from start/end times if both are provided
+    if (updateData.startTime && updateData.endTime) {
+      const durationMs = new Date(updateData.endTime as string).getTime() - new Date(updateData.startTime as string).getTime();
+      if (durationMs > 0) {
+        updatePayload.duration = Math.round(durationMs / 60000);
+      }
+    }
 
     // Recalculate status if timing changed
     if (updateData.startTime || updateData.endTime) {
       const now = new Date();
       const existingContest =
         !updateData.startTime || !updateData.endTime ? await Contest.findById(id) : null;
-      const startTime = new Date(updateData.startTime || existingContest?.startTime);
-      const endTime = new Date(updateData.endTime || existingContest?.endTime);
+      const startTime = new Date((updateData.startTime || existingContest?.startTime) as string);
+      const endTime = new Date((updateData.endTime || existingContest?.endTime) as string);
 
-      if (now < startTime) updateData.status = "UPCOMING";
-      else if (now >= startTime && now <= endTime) updateData.status = "LIVE";
-      else updateData.status = "ENDED";
+      if (now < startTime) updatePayload.status = "UPCOMING";
+      else if (now >= startTime && now <= endTime) updatePayload.status = "LIVE";
+      else updatePayload.status = "ENDED";
     }
 
-    const contest = await Contest.findByIdAndUpdate(id, updateData, {
+    const contest = await Contest.findByIdAndUpdate(id, updatePayload, {
       new: true,
       runValidators: true,
     });
@@ -83,6 +124,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/contests/[id]
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();
@@ -90,8 +134,28 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     if (user.role !== "ADMIN") {
       const existing = await Contest.findById(id);
       if (!existing) return errorResponse("Contest not found", 404);
-      if (existing.createdBy.toString() !== user._id) {
+
+      const isCreator = existing.createdBy.toString() === user._id.toString();
+
+      // Check room co-organiser access
+      let isRoomOrganiser = false;
+      if (!isCreator && existing.roomId) {
+        const room = await Room.findById(existing.roomId);
+        if (room && room.isOrganiser(user._id)) {
+          isRoomOrganiser = true;
+        }
+      }
+
+      if (!isCreator && !isRoomOrganiser) {
         return errorResponse("Not authorized to delete this contest", 403);
+      }
+
+      // Block deleting approved public contests
+      if (!existing.roomId && existing.verificationStatus === "APPROVED") {
+        return errorResponse(
+          "Public contest is approved. Only admin can delete it.",
+          403
+        );
       }
     }
 

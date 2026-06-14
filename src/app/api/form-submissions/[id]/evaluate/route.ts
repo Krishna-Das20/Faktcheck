@@ -5,8 +5,10 @@ import Form from "@/lib/models/Form";
 import Contest from "@/lib/models/Contest";
 import Result from "@/lib/models/Result";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
 import { sendMail } from "@/lib/email";
+import { evaluateSubmissionSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // PUT /api/form-submissions/[id]/evaluate — Evaluate a form submission
 export async function PUT(
@@ -14,11 +16,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     const { id } = await params;
+
+    const { data, error } = await validateBody(request, evaluateSubmissionSchema);
+    if (error) return error;
+
     await connectDB();
 
-    const { evaluations } = await request.json();
+    const { evaluations } = data;
     // evaluations: Array of { fieldId, manualScore, feedback }
 
     const submission = await FormSubmission.findById(id)

@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import {
   Trophy, Medal, Award, ChevronDown, ChevronUp,
   ArrowLeft, Clock, Shield, Users,
-  Download, AlertTriangle, Timer, Eye, FileText, Code,
+  Download, Timer, Eye, FileText, Code,
   CheckCircle, XCircle, ClipboardList, TrendingUp,
 } from "lucide-react";
 
@@ -35,7 +35,6 @@ export default function ContestLeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [isDetailedView, setIsDetailedView] = useState(false);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -56,22 +55,59 @@ export default function ContestLeaderboardPage() {
   }, [contestId, token]);
 
   const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1: return <Trophy className="w-6 h-6" style={{ color: "#EAB308" }} />;
-      case 2: return <Medal className="w-6 h-6" style={{ color: "#9CA3AF" }} />;
-      case 3: return <Award className="w-6 h-6" style={{ color: "#EA580C" }} />;
-      default: return <span className="w-6 h-6 flex items-center justify-center font-bold" style={{ color: "var(--foreground-secondary)" }}>{rank}</span>;
+    if (rank === 1) {
+      return (
+        <div
+          className="flex items-center justify-center rounded-full border"
+          style={{
+            width: 56, height: 56,
+            borderColor: 'rgb(249 179 43 / 0.45)',
+            background: 'radial-gradient(circle at 30% 30%, rgb(249 179 43 / 0.16), rgb(249 179 43 / 0.05) 48%, transparent 78%)',
+            boxShadow: 'inset 0 0 24px rgb(249 179 43 / 0.08), 0 0 28px rgb(249 179 43 / 0.08), 0 0 0 1px rgba(255,255,255,0.02)',
+          }}
+        >
+          <span className="text-2xl" role="img" aria-label="1st Place Trophy">🏆</span>
+        </div>
+      );
     }
+    if (rank === 2) {
+      return (
+        <div
+          className="flex items-center justify-center rounded-full border"
+          style={{
+            width: 56, height: 56,
+            borderColor: 'rgb(148 163 184 / 0.42)',
+            background: 'radial-gradient(circle at 30% 30%, rgb(148 163 184 / 0.15), rgb(148 163 184 / 0.05) 48%, transparent 78%)',
+            boxShadow: 'inset 0 0 24px rgb(148 163 184 / 0.08), 0 0 24px rgb(148 163 184 / 0.06), 0 0 0 1px rgba(255,255,255,0.02)',
+          }}
+        >
+          <span className="text-2xl" role="img" aria-label="2nd Place Medal" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>🥈</span>
+        </div>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <div
+          className="flex items-center justify-center rounded-full border"
+          style={{
+            width: 56, height: 56,
+            borderColor: 'rgb(249 115 22 / 0.45)',
+            background: 'radial-gradient(circle at 30% 30%, rgb(249 115 22 / 0.16), rgb(249 115 22 / 0.05) 48%, transparent 78%)',
+            boxShadow: 'inset 0 0 24px rgb(249 115 22 / 0.08), 0 0 24px rgb(249 115 22 / 0.07), 0 0 0 1px rgba(255,255,255,0.02)',
+          }}
+        >
+          <span className="text-2xl" role="img" aria-label="3rd Place Medal" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>🥉</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center rounded-full text-sm font-semibold" style={{ height: 48, minWidth: 48, padding: '0 12px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.05)', color: '#d1d5db' }}>
+        #{rank}
+      </div>
+    );
   };
 
-  const toggleRow = (rank: number) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(rank)) next.delete(rank);
-      else next.add(rank);
-      return next;
-    });
-  };
+
 
   // On-demand fetch of detailed user stats (admin/organiser only)
   const fetchUserDetails = async (userId: string) => {
@@ -149,7 +185,7 @@ export default function ContestLeaderboardPage() {
 
   return (
     <div className="page-shell">
-      <div className="section-shell">
+      <div className="section-shell" style={{ maxWidth: "72rem", margin: "0 auto" }}>
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -171,24 +207,24 @@ export default function ContestLeaderboardPage() {
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-bold flex items-center gap-3 mb-2 text-strong font-display">
+          <h1 className="text-2xl sm:text-4xl font-bold flex items-center gap-3 mb-2 text-white font-display">
             <Trophy className="w-7 h-7 sm:w-10 sm:h-10 text-primary-500" />
             Leaderboard
           </h1>
-          {stats && <p className="text-muted-ui">{stats.contestTitle}</p>}
+          {stats && <p className="text-gray-400">{stats.contestTitle}</p>}
         </div>
 
         {/* Stats */}
         {stats && (
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             {[
-              { label: "Total Participants", value: stats.totalParticipants, color: "rgb(var(--color-accent-500))" },
+              { label: "Total Participants", value: stats.totalParticipants, color: "#FF6B35" },
               { label: "Submitted", value: stats.submitted, color: "#22C55E" },
               { label: "Average Score", value: stats.averageScore?.toFixed(1) || 0, color: "#3B82F6" },
             ].map((s) => (
               <div key={s.label} className="card p-6 text-center">
                 <div className="text-3xl font-bold mb-2" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-muted-ui">{s.label}</div>
+                <div className="text-gray-400">{s.label}</div>
               </div>
             ))}
           </div>
@@ -196,14 +232,14 @@ export default function ContestLeaderboardPage() {
 
         {/* User rank hint */}
         {userRank && (
-          <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: "rgba(var(--primary-rgb,255,107,53),0.1)", border: "1px solid rgba(var(--primary-rgb,255,107,53),0.3)", color: "var(--primary)" }}>
+          <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: "rgba(var(--primary-rgb,255,107,53),0.1)", border: "1px solid rgba(var(--primary-rgb,255,107,53),0.3)", color: "#FF6B35" }}>
             <Trophy className="w-4 h-4 inline mr-2" /> Your rank: <strong>#{userRank}</strong>
           </div>
         )}
 
         {/* Admin Hint */}
         {isDetailedView && (
-          <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: "rgba(var(--primary-rgb,255,107,53),0.1)", border: "1px solid rgba(var(--primary-rgb,255,107,53),0.3)", color: "var(--primary)" }}>
+          <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: "rgba(var(--primary-rgb,255,107,53),0.1)", border: "1px solid rgba(var(--primary-rgb,255,107,53),0.3)", color: "#FF6B35" }}>
             <TrendingUp className="w-4 h-4 inline mr-2" />
             Click on any participant row to view detailed time breakdown per question and section
           </div>
@@ -217,24 +253,18 @@ export default function ContestLeaderboardPage() {
               <p className="text-lg text-muted-ui">No submissions yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full">
                 <thead style={{ background: "var(--background-secondary)", borderBottom: "1px solid var(--border)" }}>
                   <tr>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold" style={{ color: "var(--foreground-secondary)" }}>Rank</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold" style={{ color: "var(--foreground-secondary)" }}>Participant</th>
-                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>MCQ</th>
-                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>Coding</th>
-                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold" style={{ color: "var(--foreground-secondary)" }}>Total</th>
-                    <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>Time</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold" style={{ color: "var(--foreground-secondary)" }}>Rank</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold" style={{ color: "var(--foreground-secondary)" }}>Participant</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>MCQ</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>Coding</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold" style={{ color: "var(--foreground-secondary)" }}>Total</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>Time</th>
                     {isDetailedView && (
-                      <>
-                        <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden md:table-cell" style={{ color: "var(--foreground-secondary)" }}>Status</th>
-                        <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden md:table-cell" style={{ color: "var(--foreground-secondary)" }}>Warnings</th>
-                        <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden lg:table-cell" style={{ color: "var(--foreground-secondary)" }}>MCQ Time</th>
-                        <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold hidden lg:table-cell" style={{ color: "var(--foreground-secondary)" }}>Code Time</th>
-                        <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold" style={{ color: "var(--foreground-secondary)" }}></th>
-                      </>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold" style={{ color: "var(--foreground-secondary)" }}>Details</th>
                     )}
                   </tr>
                 </thead>
@@ -243,70 +273,54 @@ export default function ContestLeaderboardPage() {
                     <Fragment key={entry.rank}>
                       <tr
                         className="transition-colors"
-                        style={{ borderBottom: "1px solid var(--border)", cursor: isDetailedView ? "pointer" : "default" }}
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                          cursor: isDetailedView ? "pointer" : "default",
+                          background: entry.rank <= 3 ? "rgba(var(--primary-rgb, 255,107,53), 0.05)" : "transparent",
+                        }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "var(--background-secondary)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = entry.rank <= 3 ? "rgba(var(--primary-rgb, 255,107,53), 0.05)" : "transparent")}
                         onClick={() => isDetailedView && fetchUserDetails(entry.userId || entry.user?._id)}
                       >
-                        <td className="px-3 sm:px-4 py-3">
-                          <div className="flex items-center gap-2">{getRankIcon(entry.rank)}</div>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex items-center gap-2 sm:gap-3">{getRankIcon(entry.rank)}</div>
                         </td>
-                        <td className="px-3 sm:px-4 py-3">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: "linear-gradient(135deg, var(--primary), #A855F7)" }}>
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0" style={{ background: 'linear-gradient(to bottom right, #FF6B35, #9333ea)' }}>
                               {entry.user?.name?.charAt(0).toUpperCase() || "U"}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-sm truncate" style={{ color: "var(--foreground)" }}>{entry.user?.name}</div>
+                              <div className="font-semibold text-sm sm:text-base truncate" style={{ color: "var(--foreground)" }}>{entry.user?.name}</div>
                               {isDetailedView && entry.user?.email && (
-                                <div className="text-xs truncate" style={{ color: "var(--foreground-secondary)" }}>{entry.user.email}</div>
+                                <div className="text-xs sm:text-sm truncate" style={{ color: "var(--foreground-secondary)" }}>{entry.user.email}</div>
                               )}
                               {entry.user?.college && <div className="text-xs truncate" style={{ color: "var(--foreground-secondary)" }}>{entry.user.college}</div>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 sm:px-4 py-3 text-center font-semibold hidden sm:table-cell" style={{ color: "#3B82F6" }}>{entry.mcqScore || 0}</td>
-                        <td className="px-3 sm:px-4 py-3 text-center font-semibold hidden sm:table-cell" style={{ color: "#22C55E" }}>{entry.codingScore || 0}</td>
-                        <td className="px-3 sm:px-4 py-3 text-center">
-                          <span className="font-bold text-base" style={{ color: "var(--primary)" }}>{entry.totalScore}</span>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center font-semibold hidden sm:table-cell" style={{ color: "#60a5fa" }}>{entry.mcqScore || 0}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center font-semibold hidden sm:table-cell" style={{ color: "#4ade80" }}>{entry.codingScore || 0}</td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                          <span className="font-bold text-base sm:text-lg" style={{ color: "#FF6B35" }}>{entry.totalScore}</span>
                         </td>
-                        <td className="px-3 sm:px-4 py-3 text-center hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center hidden sm:table-cell" style={{ color: "var(--foreground-secondary)" }}>
                           {formatTime(entry.timeTaken)}
                         </td>
                         {isDetailedView && (
-                          <>
-                            <td className="px-3 sm:px-4 py-3 text-center hidden md:table-cell">
-                              {getStatusBadge(entry.details?.progressStatus || entry.status, entry.details?.terminationReason)}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 text-center hidden md:table-cell">
-                              {entry.details?.warningCount > 0 ? (
-                                <span className="flex items-center justify-center gap-1 text-sm font-semibold" style={{ color: "#EF4444" }}>
-                                  <AlertTriangle className="w-3 h-3" /> {entry.details.warningCount}
-                                </span>
-                              ) : (
-                                <span className="text-sm" style={{ color: "var(--foreground-secondary)" }}>0</span>
-                              )}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 text-center hidden lg:table-cell text-sm" style={{ color: "var(--foreground-secondary)" }}>
-                              {formatTime(entry.details?.mcqSectionTime)}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 text-center hidden lg:table-cell text-sm" style={{ color: "var(--foreground-secondary)" }}>
-                              {formatTime(entry.details?.codingSectionTime)}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 text-center">
-                              {expandedUser === (entry.userId || entry.user?._id) ? <ChevronUp className="w-5 h-5" style={{ color: "var(--primary)" }} /> : <ChevronDown className="w-5 h-5" style={{ color: "var(--foreground-secondary)" }} />}
-                            </td>
-                          </>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                            {expandedUser === (entry.userId || entry.user?._id) ? <ChevronUp className="w-5 h-5" style={{ color: "#FF6B35" }} /> : <ChevronDown className="w-5 h-5" style={{ color: "var(--foreground-secondary)" }} />}
+                          </td>
                         )}
                       </tr>
 
                       {/* Expanded Detail Row — on-demand fetch */}
                       {isDetailedView && expandedUser === (entry.userId || entry.user?._id) && (
                         <tr>
-                          <td colSpan={11} className="p-6" style={{ background: "var(--background-secondary)" }}>
+                          <td colSpan={isDetailedView ? 7 : 6} className="p-6" style={{ background: "var(--background-secondary)" }}>
                             {loadingDetails ? (
                               <div className="flex justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderTopColor: "var(--primary)" }} />
+                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderTopColor: "#FF6B35" }} />
                               </div>
                             ) : userDetails ? (
                               <div className="space-y-6">
@@ -316,7 +330,7 @@ export default function ContestLeaderboardPage() {
                                     href={`/admin/contest/${contestId}/user/${entry.userId || entry.user?._id}/answers`}
                                     onClick={(e) => e.stopPropagation()}
                                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-                                    style={{ background: "var(--primary)" }}
+                                    style={{ background: "#FF6B35" }}
                                   >
                                     <Eye className="w-4 h-4" /> View Full Answers
                                   </Link>
@@ -328,7 +342,7 @@ export default function ContestLeaderboardPage() {
                                     { icon: FileText, label: "MCQ Section", value: formatTime(userDetails.mcqSectionTime), color: "#3B82F6" },
                                     { icon: Code, label: "Coding Section", value: formatTime(userDetails.codingSectionTime), color: "#22C55E" },
                                     { icon: ClipboardList, label: "Forms Section", value: formatTime(userDetails.formsSectionTime), color: "#06B6D4" },
-                                    { icon: Timer, label: "Total Time", value: formatTime(userDetails.totalTimeSpent), color: "var(--primary)" },
+                                    { icon: Timer, label: "Total Time", value: formatTime(userDetails.totalTimeSpent), color: "#FF6B35" },
                                     { icon: Trophy, label: "Final Score", value: userDetails.totalScore, color: "#EAB308" },
                                   ].map((card) => (
                                     <div key={card.label} className="rounded-lg p-4" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
@@ -532,9 +546,9 @@ export default function ContestLeaderboardPage() {
 
         {/* Legend */}
         <div className="mt-6 flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-muted-ui">
-          <span className="flex items-center gap-1"><Trophy className="w-4 h-4" style={{ color: "#EAB308" }} /> Gold</span>
-          <span className="flex items-center gap-1"><Medal className="w-4 h-4" style={{ color: "#9CA3AF" }} /> Silver</span>
-          <span className="flex items-center gap-1"><Award className="w-4 h-4" style={{ color: "#EA580C" }} /> Bronze</span>
+          <span className="flex items-center gap-1"><span role="img" aria-label="1st">🏆</span> 1st place</span>
+          <span className="flex items-center gap-1"><span role="img" aria-label="2nd">🥈</span> 2nd place</span>
+          <span className="flex items-center gap-1"><span role="img" aria-label="3rd">🥉</span> 3rd place</span>
           {isDetailedView && <span className="text-xs italic ml-auto">Click on any row to view detailed breakdowns per question</span>}
         </div>
       </div>

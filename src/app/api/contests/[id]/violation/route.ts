@@ -7,18 +7,28 @@ import MCQSubmission from "@/lib/models/MCQSubmission";
 import Submission from "@/lib/models/Submission";
 import Result from "@/lib/models/Result";
 import { requireAuth, requireAdminOrOrganiser } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { violationSchema } from "@/lib/validations";
+import { requireContestOwner } from "@/lib/contest-access";
 
 type Params = { params: Promise<{ id: string }> };
 
 // POST /api/contests/[id]/violation — log a proctoring violation
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
 
-    const { type, details } = await request.json();
+    const { data, error } = await validateBody(request, violationSchema);
+    if (error) return error;
+
+    const type = data.type;
+    const details = data.details;
 
     const progress = await ContestProgress.findOne({ contestId: id, userId: user._id });
     if (!progress) return errorResponse("Contest not started");
@@ -165,9 +175,13 @@ export async function POST(request: NextRequest, { params }: Params) {
 // GET /api/contests/[id]/violation — get violations (admin/organiser)
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    await requireAdminOrOrganiser(request);
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
+    const user = await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();
+    await requireContestOwner(user, id);
 
     const violations = await Violation.find({ contestId: id })
       .populate("userId", "name email")
@@ -177,8 +191,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   } catch (error: any) {
     if (error.message === "NOT_AUTHENTICATED") return errorResponse("Not authorized", 401);
     if (error.message === "NOT_AUTHORIZED") return errorResponse("Insufficient permissions", 403);
+    if (error.message === "CONTEST_NOT_FOUND") return errorResponse("Contest not found", 404);
+    if (error.message === "CONTEST_FORBIDDEN") return errorResponse("Access denied", 403);
     console.error("Get violations error:", error);
     return errorResponse("Server error", 500);
   }
 }
-

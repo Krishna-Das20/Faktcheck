@@ -3,12 +3,16 @@ import connectDB from "@/lib/db";
 import FormSubmission from "@/lib/models/FormSubmission";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ contestId: string }> };
 
 // GET /api/form-submissions/my/[contestId] — Get own submissions for a contest
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { contestId } = await params;
     await connectDB();

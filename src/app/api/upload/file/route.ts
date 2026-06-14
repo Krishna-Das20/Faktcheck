@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 const ALLOWED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -23,6 +24,9 @@ const ALLOWED_FILE_TYPES = [
 // POST /api/upload/file — Upload file (announcements, attachments)
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_UPLOAD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
 
     if (!isCloudinaryConfigured()) {
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
     if (!file) return errorResponse("Please upload a file", 400);
 
     if (file.size > MAX_FILE_SIZE) {
-      return errorResponse("File too large. Max size is 10MB.", 400);
+      return errorResponse("File too large. Max size is 1MB.", 400);
     }
 
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {

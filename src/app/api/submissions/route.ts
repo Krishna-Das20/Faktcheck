@@ -6,19 +6,25 @@ import Contest from "@/lib/models/Contest";
 import ContestProgress from "@/lib/models/ContestProgress";
 import Result from "@/lib/models/Result";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
 import { submitToJudge0, mapStatusToVerdict } from "@/lib/judge0";
 import { LANGUAGE_ID_MAP } from "@/lib/constants";
+import { submitCodeSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // POST /api/submissions — Submit code solution
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth(request);
-    await connectDB();
-    const body = await request.json();
-    const { contestId, problemId, sourceCode, language, languageId: reqLanguageId } = body;
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_SUBMIT);
+    if (limited) return limited;
 
-    if (!sourceCode) return errorResponse("Source code is required", 400);
+    const user = await requireAuth(request);
+
+    const { data, error } = await validateBody(request, submitCodeSchema);
+    if (error) return error;
+
+    await connectDB();
+    const { contestId, problemId, sourceCode, language, languageId: reqLanguageId } = data;
 
     // Resolve language
     let resolvedLanguageId: number;
@@ -74,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Create submission record
     const submission = await Submission.create({
       userId: user._id,
-      contestId: contestId || null,
+      contestId: contestId || undefined,
       problemId,
       sourceCode,
       language: resolvedLanguage,
@@ -206,7 +212,7 @@ export async function POST(request: NextRequest) {
             finalVerdict === "ACCEPTED";
         } else {
           result.codingSubmissions.push({
-            problemId,
+            problemId: problemId as any,
             bestSubmission: submission._id,
             score: totalScore,
             attempts: 1,

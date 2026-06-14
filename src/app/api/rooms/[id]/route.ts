@@ -4,12 +4,16 @@ import Room from "@/lib/models/Room";
 import Contest from "@/lib/models/Contest";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
 // GET /api/rooms/[id] — Room detail with contests + role flags
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
@@ -58,6 +62,9 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/rooms/[id] — Update room (owner or admin)
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();
@@ -85,6 +92,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/rooms/[id] — Soft delete (owner or admin)
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();

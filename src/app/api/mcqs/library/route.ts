@@ -3,10 +3,14 @@ import connectDB from "@/lib/db";
 import MCQ from "@/lib/models/MCQ";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/mcqs/library — get library MCQs
 export async function GET(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     await connectDB();
 
@@ -34,6 +38,9 @@ export async function GET(request: NextRequest) {
 // POST /api/mcqs/library — create library MCQ
 export async function POST(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAdminOrOrganiser(request);
     await connectDB();
 

@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import MCQ from "@/lib/models/MCQ";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // PUT /api/mcqs/[id] — update an MCQ
 export async function PUT(
@@ -10,6 +11,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();
@@ -34,6 +38,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     await requireAdminOrOrganiser(request);
     const { id } = await params;
     await connectDB();

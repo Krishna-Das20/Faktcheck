@@ -2,11 +2,16 @@ import { NextRequest } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
 import { requireAuth } from "@/lib/api-auth";
-import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { successResponse, errorResponse, validateBody } from "@/lib/api-utils";
+import { updateProfileSchema } from "@/lib/validations";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/auth/me — Get current user profile
 export async function GET(request: NextRequest) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const authUser = await requireAuth(request);
     await connectDB();
 
@@ -26,23 +31,24 @@ export async function GET(request: NextRequest) {
 // PUT /api/auth/me — Update profile
 export async function PUT(request: NextRequest) {
   try {
-    const authUser = await requireAuth(request);
-    await connectDB();
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
 
-    const { name, college, phone } = await parseBody<{
-      name?: string;
-      college?: string;
-      phone?: string;
-    }>(request);
+    const authUser = await requireAuth(request);
+
+    const { data, error } = await validateBody(request, updateProfileSchema);
+    if (error) return error;
+
+    await connectDB();
 
     const user = await User.findById(authUser._id);
     if (!user) {
       return errorResponse("User not found", 404);
     }
 
-    if (name) user.name = name;
-    if (college !== undefined) user.college = college;
-    if (phone !== undefined) user.phone = phone;
+    if (data.name) user.name = data.name;
+    if (data.college !== undefined) user.college = data.college;
+    if (data.phone !== undefined) user.phone = data.phone;
 
     const updatedUser = await user.save();
 

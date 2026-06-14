@@ -37,7 +37,14 @@ export default function MCQSectionPage() {
   const { contestId } = useParams<{ contestId: string }>();
   const router = useRouter();
   const { token } = useAuth();
-  const { formattedTime, remainingTime, progress } = useContestTimer();
+  const {
+    activeSectionTimer,
+    activeSectionFormatted,
+    progress,
+    sectionStatuses,
+    startSection,
+    submitSection,
+  } = useContestTimer();
 
   const [mcqs, setMcqs] = useState<MCQQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -46,13 +53,19 @@ export default function MCQSectionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [contestInfo, setContestInfo] = useState<any>(null);
+  const [sectionStarted, setSectionStarted] = useState(false);
 
   // Time tracking refs
   const questionStartTime = useRef(Date.now());
   const sectionStartTime = useRef(Date.now());
 
-  // Block re-entry if already submitted
+  // Block re-entry if section already submitted
   useEffect(() => {
+    if (sectionStatuses.mcq === "SUBMITTED") {
+      toast.error("MCQ section already submitted. Cannot re-enter.");
+      router.replace(`/contest/${contestId}/hub`);
+      return;
+    }
     if (progress) {
       if (
         progress.status === "SUBMITTED" ||
@@ -66,7 +79,19 @@ export default function MCQSectionPage() {
         router.replace(`/contest/${contestId}/review`);
       }
     }
-  }, [progress, contestId, router]);
+  }, [progress, sectionStatuses, contestId, router]);
+
+  // Start section timer on mount
+  useEffect(() => {
+    if (sectionStatuses.mcq !== "SUBMITTED" && !sectionStarted) {
+      startSection("mcq")
+        .then(() => setSectionStarted(true))
+        .catch(() => {
+          router.replace(`/contest/${contestId}/hub`);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch MCQs
   useEffect(() => {
@@ -214,33 +239,16 @@ export default function MCQSectionPage() {
     toast.success("Answer cleared");
   };
 
-  // Save and go back to hub
-  const handleSaveAndBackToHub = async () => {
-    try {
-      if (Object.keys(answers).length > 0) {
-        const formattedAnswers = Object.keys(answers).map(
-          (mcqId) => ({
-            mcqId,
-            selectedOptions: answers[mcqId],
-          })
-        );
-        await fetch(`/api/contests/${contestId}/save-progress`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ mcqAnswers: formattedAnswers }),
-        });
-        toast.success("Progress saved!");
-      }
-    } catch {
-      toast.error("Failed to save progress");
-    }
-    router.push(`/contest/${contestId}/hub`);
+  // Submit section and go back to hub
+  const handleSubmitAndBackToHub = async () => {
+    const confirmed = window.confirm(
+      "Submitting will lock this section. You cannot re-enter. Continue?"
+    );
+    if (!confirmed) return;
+    await handleSubmit();
   };
 
-  // Submit MCQ section
+  // Submit MCQ section via section submit API
   const handleSubmit = async () => {
     if (submitting) return;
 
@@ -249,7 +257,7 @@ export default function MCQSectionPage() {
         !answers[mcq._id] || answers[mcq._id].length === 0
     );
 
-    if (unanswered.length > 0 && (remainingTime ?? 0) > 0) {
+    if (unanswered.length > 0 && (activeSectionTimer ?? 0) > 0) {
       const confirm = window.confirm(
         `You have ${unanswered.length} unanswered question(s). Are you sure you want to submit?`
       );
@@ -265,29 +273,8 @@ export default function MCQSectionPage() {
         })
       );
 
-      const res = await fetch("/api/mcqs/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          contestId,
-          answers: formattedAnswers.map((a) => ({
-            questionId: a.mcqId,
-            selectedOptions: a.selectedOptions,
-          })),
-        }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        toast.success("MCQ section submitted successfully!");
-        router.push(`/contest/${contestId}/hub`);
-      } else {
-        toast.error(data.message || "Failed to submit answers");
-        setSubmitting(false);
-      }
+      await submitSection("mcq", { mcqAnswers: formattedAnswers });
+      router.push(`/contest/${contestId}/hub`);
     } catch {
       toast.error("Failed to submit answers");
       setSubmitting(false);
@@ -372,7 +359,7 @@ export default function MCQSectionPage() {
   const selectedOptions = answers[currentMCQ._id] || [];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ background: "linear-gradient(135deg, var(--background) 0%, var(--background-card) 50%, var(--background) 100%)" }}>
       {/* Header */}
       <div
         className="sticky top-0 z-10"
@@ -385,14 +372,14 @@ export default function MCQSectionPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <button
-                onClick={handleSaveAndBackToHub}
+                onClick={handleSubmitAndBackToHub}
                 className="flex items-center gap-1 sm:gap-2 flex-shrink-0 transition-colors"
                 style={{ color: "var(--foreground-secondary)" }}
-                aria-label="Save and go back to hub"
+                aria-label="Submit and go back to hub"
               >
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:inline">
-                  Save &amp; Back to Hub
+                  Submit &amp; Back to Hub
                 </span>
               </button>
               <div className="min-w-0">
@@ -412,26 +399,28 @@ export default function MCQSectionPage() {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-6">
-              <div
-                className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-mono text-sm sm:text-lg font-bold ${
-                  (remainingTime ?? 0) < 300 ? "animate-pulse" : ""
-                }`}
-                style={{
-                  background:
-                    (remainingTime ?? 0) < 300
-                      ? "rgba(239, 68, 68, 0.2)"
-                      : "var(--background-secondary)",
-                  color:
-                    (remainingTime ?? 0) < 300
-                      ? "#ef4444"
-                      : "var(--foreground)",
-                }}
-                role="timer"
-                aria-live="polite"
-              >
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{formattedTime}</span>
-              </div>
+              {activeSectionTimer !== null && (
+                <div
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-mono text-sm sm:text-lg font-bold ${
+                    (activeSectionTimer ?? 0) < 300 ? "animate-pulse" : ""
+                  }`}
+                  style={{
+                    background:
+                      (activeSectionTimer ?? 0) < 300
+                        ? "rgba(239, 68, 68, 0.2)"
+                        : "var(--background-secondary)",
+                    color:
+                      (activeSectionTimer ?? 0) < 300
+                        ? "#ef4444"
+                        : "var(--foreground)",
+                  }}
+                  role="timer"
+                  aria-live="polite"
+                >
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>{activeSectionFormatted}</span>
+                </div>
+              )}
 
               <button
                 onClick={handleSubmit}

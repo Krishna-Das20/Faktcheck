@@ -19,6 +19,7 @@ export default function EditContestPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+
   useEffect(() => {
     const loadContest = async () => {
       try {
@@ -29,6 +30,7 @@ export default function EditContestPage() {
         setFormData({
           title: c.title, description: c.description,
           startTime: fmt(c.startTime), endTime: fmt(c.endTime),
+          duration: c.duration || 120, // loaded from DB for reference but not editable
           maxParticipants: c.maxParticipants || "",
           sections: {
             mcq: { enabled: c.sections?.mcq?.enabled ?? false, hasTimer: c.sections?.mcq?.hasTimer ?? (c.sections?.mcq?.duration > 0), duration: c.sections?.mcq?.duration ?? 30, proctored: c.sections?.mcq?.proctored ?? true },
@@ -43,6 +45,8 @@ export default function EditContestPage() {
     loadContest();
   }, [contestId]);
 
+
+
   if (loading || !formData) {
     return (
       <div className="page-shell flex items-center justify-center">
@@ -54,6 +58,7 @@ export default function EditContestPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, type } = e.target;
     const value = type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
+
     if (name.includes(".")) {
       const parts = name.split(".");
       setFormData((prev: any) => {
@@ -68,30 +73,19 @@ export default function EditContestPage() {
     }
   };
 
-  // Compute total duration from section timers
-  const computeDuration = () => {
-    let total = 0;
-    const { mcq, coding, forms } = formData.sections;
-    if (mcq.enabled && mcq.hasTimer) total += mcq.duration;
-    if (coding.enabled && coding.hasTimer) total += coding.duration;
-    if (forms.enabled && forms.hasTimer) total += forms.duration;
-    if (total === 0 && formData.startTime && formData.endTime) {
-      const diff = (new Date(formData.endTime).getTime() - new Date(formData.startTime).getTime()) / 60000;
-      total = Math.max(1, Math.round(diff));
-    }
-    return total || 120;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const duration = computeDuration();
+      // Auto-compute duration from start/end times (in minutes)
+      const durationMs = new Date(formData.endTime).getTime() - new Date(formData.startTime).getTime();
+      const durationMins = Math.round(durationMs / 60000);
+
       const body = {
         ...formData,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
-        duration,
+        duration: durationMins,
         maxParticipants: formData.maxParticipants ? Number(formData.maxParticipants) : undefined,
         sections: {
           mcq: { ...formData.sections.mcq, duration: formData.sections.mcq.hasTimer ? Number(formData.sections.mcq.duration) : 0, totalMarks: 0 },

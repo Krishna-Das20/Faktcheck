@@ -5,6 +5,7 @@ import ContestMCQ from "@/lib/models/ContestMCQ";
 import Contest from "@/lib/models/Contest";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 // GET /api/mcqs/contest/[contestId] — get MCQs for a contest
 export async function GET(
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ contestId: string }> }
 ) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_STANDARD);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { contestId } = await params;
     await connectDB();
