@@ -43,7 +43,7 @@ export default function MCQLibraryPage() {
     tags: "",
     imageUrl: "",
     imagePublicId: "",
-    isPublic: false,
+    isPublic: true,
   });
 
   useEffect(() => {

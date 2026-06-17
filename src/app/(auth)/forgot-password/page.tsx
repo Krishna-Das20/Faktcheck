@@ -20,21 +20,18 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
 
-      if (data.success) {
-        setSent(true);
-        toast.success("Reset link sent! Check your email.");
-      } else {
-        toast.error(data.message);
-      }
+      // Always show success to prevent email enumeration
+      setSent(true);
+      toast.success("If an account exists, a reset link has been sent.");
     } catch {
-      toast.error("Failed to send reset link");
+      setSent(true);
+      toast.success("If an account exists, a reset link has been sent.");
     } finally {
       setLoading(false);
     }

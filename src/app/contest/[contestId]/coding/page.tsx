@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   Minimize2,
   Maximize2,
+  GripVertical,
+  GripHorizontal,
 } from "lucide-react";
 import { LANGUAGES, DEFAULT_CODE, DIFFICULTY_COLORS } from "@/lib/constants";
 
@@ -109,6 +111,18 @@ export default function CodingSectionPage() {
   const [isIoMinimized, setIsIoMinimized] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<"description" | "editor">("editor");
 
+  // Resizable panel states
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
+  const [ioHeight, setIoHeight] = useState(250); // pixels
+  const [isResizingHorizontal, setIsResizingHorizontal] = useState(false);
+  const [isResizingVertical, setIsResizingVertical] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+
+  // Time tracking
+  const problemStartTime = useRef(Date.now());
+  const sectionStartTime = useRef(Date.now());
+
   // Fetch problems on mount
   useEffect(() => {
     const fetchProblems = async () => {
@@ -191,6 +205,104 @@ export default function CodingSectionPage() {
       );
     }
   }, [selectedLanguage, currentProblem, problems, contestId]);
+
+  // Track time when changing problems
+  const trackProblemTime = async (problemId: string, timeSpent: number) => {
+    try {
+      await fetch(`/api/contests/${contestId}/track-time`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ type: "coding", problemId, timeSpent }),
+      });
+    } catch (error) {
+      console.error("Error tracking time:", error);
+    }
+  };
+
+  // Handle problem navigation with time tracking
+  const handleProblemChange = (newProblem: number) => {
+    if (problems.length === 0) return;
+    const currentProb = problems[currentProblem];
+    const timeSpent = Math.floor((Date.now() - problemStartTime.current) / 1000);
+    if (currentProb && timeSpent > 0) {
+      trackProblemTime(currentProb._id, timeSpent);
+    }
+    problemStartTime.current = Date.now();
+    setCurrentProblem(newProblem);
+  };
+
+  // Track section time when leaving coding section
+  useEffect(() => {
+    return () => {
+      const sectionTimeSpent = Math.floor((Date.now() - sectionStartTime.current) / 1000);
+      const storedToken = localStorage.getItem("token");
+      fetch(`/api/contests/${contestId}/track-time`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedToken}`,
+        },
+        body: JSON.stringify({ type: "coding-section", timeSpent: sectionTimeSpent }),
+      }).catch((err) => console.error("Error tracking section time:", err));
+    };
+  }, [contestId]);
+
+  // Horizontal resize handlers
+  const handleHorizontalMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingHorizontal(true);
+  }, []);
+
+  const handleVerticalMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingVertical(true);
+  }, []);
+
+  // Mouse move/up for resizing with rAF
+  useEffect(() => {
+    let animationFrameId: number | null = null;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        if (isResizingHorizontal && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+          setLeftPanelWidth(Math.min(Math.max(15, newWidth), 85));
+        }
+        if (isResizingVertical && rightPanelRef.current) {
+          const rect = rightPanelRef.current.getBoundingClientRect();
+          const newHeight = rect.bottom - e.clientY;
+          const maxHeight = rect.height * 0.6;
+          setIoHeight(Math.min(Math.max(80, newHeight), maxHeight));
+        }
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      setIsResizingHorizontal(false);
+      setIsResizingVertical(false);
+    };
+
+    if (isResizingHorizontal || isResizingVertical) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = isResizingHorizontal ? "col-resize" : "row-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizingHorizontal, isResizingVertical]);
 
   // Emergency save coding drafts via sendBeacon on browser close
   // Mirrors the MCQ page's emergency-save pattern for data preservation
@@ -641,7 +753,7 @@ export default function CodingSectionPage() {
           {problems.map((p, index) => (
             <button
               key={p._id}
-              onClick={() => setCurrentProblem(index)}
+              onClick={() => handleProblemChange(index)}
               className="px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors flex-shrink-0"
               style={{
                 background:
@@ -688,11 +800,11 @@ export default function CodingSectionPage() {
       </div>
 
       {/* Main Content — Split Pane */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div ref={containerRef} className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Panel — Problem Description */}
         <div
-          className={`w-full lg:w-1/2 flex flex-col overflow-hidden ${mobilePanel !== "description" ? "hidden lg:flex" : "flex"}`}
-          style={{ borderRight: "1px solid var(--border)" }}
+          className={`flex flex-col overflow-hidden ${mobilePanel !== "description" ? "hidden lg:flex" : "flex"}`}
+          style={{ width: `${leftPanelWidth}%`, borderRight: "1px solid var(--border)" }}
         >
           {/* Tabs */}
           <div
@@ -1022,8 +1134,19 @@ export default function CodingSectionPage() {
           </div>
         </div>
 
-        {/* Right Panel — Code Editor + I/O */}
-        <div className={`flex-1 flex flex-col overflow-hidden ${mobilePanel !== "editor" ? "hidden lg:flex" : "flex"}`}>
+        {/* Horizontal Resize Handle */}
+        <div
+          onMouseDown={handleHorizontalMouseDown}
+          className="hidden lg:flex w-1.5 items-center justify-center cursor-col-resize group transition-colors flex-shrink-0"
+          style={{ background: "var(--border)" }}
+        >
+          <GripVertical className="w-3 h-3 group-hover:opacity-100 opacity-40 transition-opacity" style={{ color: "var(--foreground-secondary)" }} />
+        </div>
+
+        {/* Right Panel — Code Editor */}
+        <div
+          ref={rightPanelRef}
+          className={`flex-1 flex flex-col overflow-hidden ${mobilePanel !== "editor" ? "hidden lg:flex" : "flex"}`}>
           {/* Editor */}
           <div
             className="overflow-hidden"
@@ -1061,11 +1184,22 @@ export default function CodingSectionPage() {
             />
           </div>
 
+          {/* Vertical Resize Handle */}
+          {!isIoMinimized && (
+            <div
+              onMouseDown={handleVerticalMouseDown}
+              className="hidden lg:flex h-1.5 items-center justify-center cursor-row-resize group transition-colors flex-shrink-0"
+              style={{ background: "var(--border)" }}
+            >
+              <GripHorizontal className="w-3 h-3 group-hover:opacity-100 opacity-40 transition-opacity" style={{ color: "var(--foreground-secondary)" }} />
+            </div>
+          )}
+
           {/* I/O Panel */}
           <div
             className="flex flex-col flex-shrink-0"
             style={{
-              height: isIoMinimized ? "40px" : "250px",
+              height: isIoMinimized ? "40px" : `${ioHeight}px`,
               borderTop: "1px solid var(--border)",
               background: "var(--background-card)",
             }}

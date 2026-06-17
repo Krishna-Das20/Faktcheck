@@ -120,7 +120,27 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   }, [isAuthenticated, user?.name, user?.role]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <nav className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-4">
+        <div className="mx-auto max-w-7xl">
+          <div className="relative flex items-center justify-between px-4 sm:px-5 h-16 rounded-[2rem]">
+            {/* Logo skeleton */}
+            <div className="h-6 w-28 animate-pulse rounded-lg" style={{ backgroundColor: "rgb(var(--color-panel-muted) / 0.6)" }} />
+            {/* Nav links skeleton */}
+            <div className="hidden md:flex items-center gap-4">
+              <div className="h-4 w-16 animate-pulse rounded" style={{ backgroundColor: "rgb(var(--color-panel-muted) / 0.4)" }} />
+              <div className="h-4 w-20 animate-pulse rounded" style={{ backgroundColor: "rgb(var(--color-panel-muted) / 0.4)" }} />
+            </div>
+            {/* Right skeleton */}
+            <div className="hidden md:flex items-center gap-3">
+              <div className="h-9 w-24 animate-pulse rounded-full" style={{ backgroundColor: "rgb(var(--color-panel-muted) / 0.5)" }} />
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-4">
@@ -278,13 +298,16 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div
-            className="absolute left-0 right-0 top-[110%] mt-2 rounded-3xl p-5 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl md:hidden"
-            style={{
-              backgroundColor: "rgb(var(--color-page) / 0.95)",
-            }}
-          >
+        <div
+          className={`absolute left-0 right-0 top-[110%] mt-2 rounded-3xl p-5 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl md:hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            mobileMenuOpen
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-4 pointer-events-none"
+          }`}
+          style={{
+            backgroundColor: "rgb(var(--color-page) / 0.95)",
+          }}
+        >
             <div className="grid gap-2">
               <RollerLink
                 href="/contests"
@@ -340,8 +363,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </nav>
   );

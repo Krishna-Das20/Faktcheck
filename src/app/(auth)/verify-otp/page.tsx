@@ -38,6 +38,11 @@ function VerifyOTPContent() {
     return () => clearInterval(timer);
   }, [countdown]);
 
+  // Auto-focus first input on mount
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
     const newOtp = [...otp];
@@ -47,6 +52,14 @@ function VerifyOTPContent() {
     // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 6 digits entered
+    if (newOtp.every((d) => d !== "")) {
+      setTimeout(() => {
+        const form = document.getElementById("verify-otp-form") as HTMLFormElement;
+        form?.requestSubmit();
+      }, 100);
     }
   };
 
@@ -90,6 +103,8 @@ function VerifyOTPContent() {
         router.push("/dashboard");
       } else {
         toast.error(data.message || "Invalid OTP");
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
       }
     } catch {
       toast.error("Verification failed");
@@ -143,7 +158,7 @@ function VerifyOTPContent() {
           </div>
 
           {/* OTP Input */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} id="verify-otp-form">
             <div className="flex justify-center gap-3 mb-6" onPaste={handlePaste}>
               {otp.map((digit, index) => (
                 <input

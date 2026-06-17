@@ -40,7 +40,7 @@ export default function RegisterPage() {
   const handleGoogleCallback = useCallback(
     async (response: { credential?: string }) => {
       if (!response.credential) {
-        toast.error("Google sign-in failed");
+        toast.error("Google sign-up failed");
         return;
       }
 
@@ -58,10 +58,10 @@ export default function RegisterPage() {
           toast.success(data.message);
           router.push("/dashboard");
         } else {
-          toast.error(data.message || "Google sign-in failed");
+          toast.error(data.message || "Google sign-up failed");
         }
       } catch {
-        toast.error("Google sign-in failed");
+        toast.error("Google sign-up failed");
       } finally {
         setGoogleLoading(false);
       }

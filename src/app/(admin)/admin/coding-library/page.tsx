@@ -44,7 +44,7 @@ export default function CodingLibraryPage() {
     tags: "",
     imageUrl: "",
     imagePublicId: "",
-    isPublic: false,
+    isPublic: true,
   });
 
   useEffect(() => {

@@ -21,23 +21,26 @@ export default function ContestReviewPage() {
   const [result, setResult] = useState<any>(null);
   const [contest, setContest] = useState<any>(null);
   const [codingReview, setCodingReview] = useState<any[]>([]);
+  const [formSubmissions, setFormSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchReviewData = async () => {
       const headers = { Authorization: `Bearer ${token}` };
       try {
-        const [mcqRes, resultRes, contestRes, codingRes] = await Promise.all([
+        const [mcqRes, resultRes, contestRes, codingRes, formsRes] = await Promise.all([
           fetch(`/api/mcqs/contest/${contestId}/review`, { headers }).then((r) => r.json()).catch(() => ({ review: [] })),
           fetch(`/api/leaderboard/${contestId}/rank`, { headers }).then((r) => r.json()).catch(() => ({ result: null })),
           fetch(`/api/contests/${contestId}`, { headers }).then((r) => r.json()).catch(() => ({ contest: null })),
           fetch(`/api/coding/contest/${contestId}/review`, { headers }).then((r) => r.json()).catch(() => ({ review: [] })),
+          fetch(`/api/form-submissions/my/${contestId}`, { headers }).then((r) => r.json()).catch(() => ({ submissions: [] })),
         ]);
 
         setMcqReview(mcqRes.review || []);
         setResult(resultRes.result);
         setContest(contestRes.contest);
         setCodingReview(codingRes.review || []);
+        setFormSubmissions(formsRes.submissions || []);
       } catch {
         toast.error("Failed to load review data");
       }
@@ -55,6 +58,7 @@ export default function ContestReviewPage() {
   }
 
   const hasMCQ = contest?.sections?.mcq?.enabled && mcqReview.length > 0;
+  const hasForms = contest?.sections?.forms?.enabled && formSubmissions.length > 0;
   const hasCoding = contest?.sections?.coding?.enabled && codingReview.length > 0;
 
   const currentMCQ = mcqReview[currentQuestion];
@@ -95,7 +99,7 @@ export default function ContestReviewPage() {
         </div>
 
         {/* Tab Toggle */}
-        {(hasMCQ || hasCoding) && (
+        {(hasMCQ || hasForms || hasCoding) && (
           <div className="flex flex-wrap gap-2 mb-8">
             {hasMCQ && (
               <button
@@ -107,6 +111,18 @@ export default function ContestReviewPage() {
                 }}
               >
                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" /> MCQ Section
+              </button>
+            )}
+            {hasForms && (
+              <button
+                onClick={() => setActiveTab("forms")}
+                className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base transition-all"
+                style={{
+                  background: activeTab === "forms" ? "var(--primary)" : "var(--background-secondary)",
+                  color: activeTab === "forms" ? "white" : "var(--foreground-secondary)",
+                }}
+              >
+                <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" /> Forms Section
               </button>
             )}
             {hasCoding && (
@@ -263,6 +279,98 @@ export default function ContestReviewPage() {
           </>
         )}
 
+        {/* Forms Review */}
+        {activeTab === "forms" && hasForms && (
+          <div className="space-y-6">
+            {formSubmissions.map((submission: any) => {
+              const isPending = !submission.isFullyEvaluated;
+              const form = submission.formId;
+
+              return (
+                <div key={submission._id} className="rounded-xl p-6" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="w-6 h-6" style={{ color: "var(--primary)" }} />
+                      <h3 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>{form?.title || "Form"}</h3>
+                    </div>
+                    {isPending ? (
+                      <span className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm" style={{ background: "rgba(234,179,8,0.2)", color: "#EAB308" }}>
+                        <Clock className="w-4 h-4" />
+                        Under Evaluation
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm" style={{ background: "rgba(34,197,94,0.2)", color: "#22C55E" }}>
+                        <CheckCircle className="w-4 h-4" />
+                        Evaluated
+                      </span>
+                    )}
+                  </div>
+
+                  {isPending ? (
+                    <div className="rounded-lg p-6 text-center" style={{ background: "var(--background-secondary)" }}>
+                      <Clock className="w-12 h-12 mx-auto mb-3" style={{ color: "#EAB308" }} />
+                      <h4 className="text-lg font-semibold mb-2" style={{ color: "var(--foreground)" }}>Awaiting Evaluation</h4>
+                      <p className="mb-4" style={{ color: "var(--foreground-secondary)" }}>
+                        Your form submission is being reviewed by the evaluator.
+                        Results will be available once evaluation is complete.
+                      </p>
+                      <span className="flex items-center justify-center gap-2" style={{ color: "#22C55E" }}>
+                        <Mail className="w-4 h-4" />
+                        You will be notified via email when reviewed
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Score Summary */}
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="rounded-lg p-4 text-center" style={{ background: "var(--background-secondary)" }}>
+                          <p className="text-2xl font-bold" style={{ color: "var(--primary)" }}>{submission.totalScore}</p>
+                          <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>Total Score</p>
+                        </div>
+                        <div className="rounded-lg p-4 text-center" style={{ background: "var(--background-secondary)" }}>
+                          <p className="text-2xl font-bold" style={{ color: "#22C55E" }}>{submission.totalAutoScore}</p>
+                          <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>Auto Score</p>
+                        </div>
+                        <div className="rounded-lg p-4 text-center" style={{ background: "var(--background-secondary)" }}>
+                          <p className="text-2xl font-bold" style={{ color: "var(--primary)" }}>{submission.totalManualScore}</p>
+                          <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>Manual Score</p>
+                        </div>
+                      </div>
+
+                      {/* Individual Responses */}
+                      <div className="space-y-3">
+                        {submission.responses?.map((response: any, idx: number) => {
+                          const field = form?.fields?.find((f: any) => f.fieldId === response.fieldId);
+                          const score = response.isAutoScored ? response.autoScore : response.manualScore;
+
+                          return (
+                            <div key={response.fieldId} className="p-4 rounded-lg" style={{ background: "var(--background-secondary)" }}>
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-medium" style={{ color: "var(--foreground)" }}>{field?.label || `Field ${idx + 1}`}</span>
+                                <span className="text-sm" style={{ color: score > 0 ? "#22C55E" : "var(--foreground-secondary)" }}>
+                                  {score || 0} / {response.maxMarks}
+                                </span>
+                              </div>
+                              <p className="text-sm" style={{ color: "var(--foreground-secondary)" }}>
+                                {Array.isArray(response.value) ? response.value.join(", ") : response.value || "No answer"}
+                              </p>
+                              {response.feedback && (
+                                <p className="text-sm mt-2 italic" style={{ color: "var(--primary)" }}>
+                                  Feedback: {response.feedback}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Coding Review */}
         {activeTab === "coding" && hasCoding && (
           <div className="space-y-4">
@@ -308,7 +416,7 @@ export default function ContestReviewPage() {
         )}
 
         {/* No Data */}
-        {!hasMCQ && !hasCoding && (
+        {!hasMCQ && !hasCoding && !hasForms && (
           <div className="rounded-xl text-center py-12" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
             <FileText className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--foreground-secondary)" }} />
             <h2 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>No Review Data</h2>
