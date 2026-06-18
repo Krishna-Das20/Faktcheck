@@ -190,8 +190,18 @@ const externalLinkIcon = stroke(
 const starIcon = stroke(
   <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
 );
+const hardDriveIcon = stroke(
+  <>
+    <rect x="2" y="3" width="20" height="18" rx="2" ry="2" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="2" y1="16" x2="22" y2="16" />
+    <circle cx="6" cy="16" r="1" />
+    <circle cx="10" cy="16" r="1" />
+  </>
+);
 
 export const AlertTriangle = triangleAlertIcon;
+export const HardDrive = hardDriveIcon;
 export const AiBeautifyIcon = aiBeautifyIcon;
 export const AlignLeft = doodle(DoodleInterfaces.LeftAlign);
 export const ArrowLeft = doodle(DoodleArrow.ArrowLeft);
