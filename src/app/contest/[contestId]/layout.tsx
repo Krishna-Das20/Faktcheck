@@ -3,7 +3,9 @@
 import { ContestTimerProvider, useContestTimer } from "@/context/ContestTimerContext";
 import { useAuth } from "@/context/AuthContext";
 import ProctorGuard from "@/components/contest/ProctorGuard";
-import { use, useState, useEffect, useCallback, type ReactNode } from "react";
+import SystemCheck, { type MediaProctoringConfig } from "@/components/contest/SystemCheck";
+import ProctorMedia from "@/components/contest/ProctorMedia";
+import { use, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -27,7 +29,13 @@ function ContestInner({
   const router = useRouter();
   const pathname = usePathname();
   const [proctorEnabled, setProctorEnabled] = useState(false);
+  const [mediaConfig, setMediaConfig] = useState<MediaProctoringConfig | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Media-proctoring session gate: streams from the SystemCheck wizard
+  const [mediaReady, setMediaReady] = useState(false);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
 
   // Determine current section from pathname
   const sectionType = pathname.includes("/mcq")
@@ -57,8 +65,16 @@ function ContestInner({
             ? true
             : false;
         setProctorEnabled(isProctored);
+
+        // Media proctoring (camera/mic/screen) — only when the organiser
+        // enabled it AND this section is proctored.
+        const mp = contest?.mediaProctoring;
+        setMediaConfig(mp?.enabled && isProctored ? (mp as MediaProctoringConfig) : null);
       } catch {
-        if (mounted) setProctorEnabled(false);
+        if (mounted) {
+          setProctorEnabled(false);
+          setMediaConfig(null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -69,6 +85,15 @@ function ContestInner({
       mounted = false;
     };
   }, [contestId, sectionType, token]);
+
+  const handleMediaReady = useCallback(
+    (streams: { camera: MediaStream | null; screen: MediaStream | null }) => {
+      cameraStreamRef.current = streams.camera;
+      screenStreamRef.current = streams.screen;
+      setMediaReady(true);
+    },
+    []
+  );
 
   // Auto-submit ENTIRE contest on malpractice (3 violations)
   // The violation API already sets progress.status='SUBMITTED' and creates Result server-side.
@@ -142,13 +167,35 @@ function ContestInner({
     );
   }
 
+  // Media-proctoring gate: run the system check + consent before the section.
+  if (mediaConfig && !mediaReady) {
+    return (
+      <SystemCheck
+        contestId={contestId}
+        config={mediaConfig}
+        onReady={handleMediaReady}
+      />
+    );
+  }
+
   return (
     <ProctorGuard
       contestId={contestId}
       onAutoSubmit={handleAutoSubmit}
       enabled={proctorEnabled}
     >
-      {children}
+      {mediaConfig && mediaReady ? (
+        <ProctorMedia
+          contestId={contestId}
+          config={mediaConfig}
+          cameraStream={cameraStreamRef.current}
+          screenStream={screenStreamRef.current}
+        >
+          {children}
+        </ProctorMedia>
+      ) : (
+        children
+      )}
     </ProctorGuard>
   );
 }

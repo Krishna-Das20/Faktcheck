@@ -24,13 +24,12 @@
 - **Approval workflow** — Organiser-created contests require admin approval; room contests are auto-approved
 
 ### 🛡️ Proctoring & Integrity
-- **Fullscreen enforcement** with exit detection and auto re-entry prompts
-- **Tab-switch / window-blur detection**
-- **Copy/paste blocking** (allowed inside the Monaco code editor)
-- **Screenshot-shortcut interception** (PrintScreen, Win+Shift+S, Ctrl+Shift+S) and 13 blocked shortcut combos
-- **3-strike warning system** — warning counts persist server-side across refreshes
-- **Violation audit log** — every event stored with type, timestamp, and details; per-contest admin violations dashboard
-- **Server-side malpractice handling** — on the final strike the attempt is terminated and a scored Result is written server-side, even if the client dies
+- **Risk-score model** — every signal carries a weight (an OS-notification blur ≈ 1, a phone in frame ≈ 25); the server owns the cumulative score, warns at a soft threshold, and auto-terminates at a hard one or on a catastrophic flag — fairer than a blunt strike count
+- **Browser signals** — fullscreen enforcement with exit detection, tab-switch / window-blur detection, copy/paste blocking (allowed inside Monaco), **paste-content logging** (pasted text recorded as evidence), screenshot-shortcut interception (PrintScreen, Win+Shift+S, Ctrl+Shift+S), 13 blocked shortcut combos, **multiple-monitor / extended-display detection**
+- **Advanced media proctoring** (opt-in per contest) — pre-exam **system-check wizard** (camera, mic level meter, fullscreen, single-display, whole-screen share verification), **logged consent**, **identity photo capture**, then during the exam: on-device **MediaPipe face detection** (no-face and multiple-face flags with evidence stills), **adaptive webcam/screen snapshots** (15 s baseline, tightening to 5 s after any flag — HackerRank-style), camera-loss heartbeat, and screen-share-stop detection
+- **Private evidence storage** — snapshots and identity photos upload as authenticated Cloudinary assets, viewable only via short-lived signed URLs
+- **Reviewer dashboard** (`/admin/contest/:id/proctoring`) — candidates ranked by risk score with flag counts, per-candidate flag timeline with evidence thumbnails, identity photo, and consent record
+- **Server-side malpractice handling** — on termination the attempt is scored and a Result is written server-side, even if the client dies; legacy violations dashboard still works (dual-write)
 
 ### 📝 MCQ Engine
 - **Rich question editor** — options, categories, difficulty, explanations, images (multi-image support)

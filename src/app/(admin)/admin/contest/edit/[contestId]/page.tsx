@@ -38,6 +38,14 @@ export default function EditContestPage() {
             forms: { enabled: c.sections?.forms?.enabled ?? false, hasTimer: false, duration: 0, proctored: c.sections?.forms?.proctored ?? false },
           },
           rules: c.rules || [], prizes: c.prizes || [], isPublished: c.isPublished,
+          mediaProctoring: {
+            enabled: c.mediaProctoring?.enabled ?? false,
+            requireCamera: c.mediaProctoring?.requireCamera ?? true,
+            requireScreen: c.mediaProctoring?.requireScreen ?? false,
+            requireIdentityPhoto: c.mediaProctoring?.requireIdentityPhoto ?? true,
+            recordSnapshots: c.mediaProctoring?.recordSnapshots ?? true,
+            detectAudio: c.mediaProctoring?.detectAudio ?? false,
+          },
         });
       } catch { toast.error("Failed to load contest"); router.push("/admin/dashboard"); }
       setLoading(false);
@@ -65,6 +73,8 @@ export default function EditContestPage() {
         const updated = { ...prev };
         if (parts.length === 3) {
           updated[parts[0]] = { ...updated[parts[0]], [parts[1]]: { ...updated[parts[0]][parts[1]], [parts[2]]: value } };
+        } else if (parts.length === 2) {
+          updated[parts[0]] = { ...updated[parts[0]], [parts[1]]: value };
         }
         return updated;
       });
@@ -190,6 +200,37 @@ export default function EditContestPage() {
             <SectionBlock name="mcq" label="MCQ Section" />
             <SectionBlock name="coding" label="Coding Section" />
             <SectionBlock name="forms" label="Custom Forms Section" />
+          </div>
+
+          {/* Media Proctoring */}
+          <div className="rounded-xl p-6 space-y-4" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
+            <div>
+              <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Advanced Proctoring (Camera / Screen)</h2>
+              <p className="text-sm mt-1" style={{ color: "var(--foreground-secondary)" }}>
+                Adds a pre-exam system check, consent, identity capture, and on-device camera
+                monitoring for proctored sections. Requires Cloudinary storage.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="mediaProctoring.enabled" checked={formData.mediaProctoring?.enabled || false} onChange={handleChange} className="w-5 h-5 rounded" />
+              <span className="font-medium" style={{ color: "var(--foreground)" }}>Enable advanced proctoring</span>
+            </label>
+            {formData.mediaProctoring?.enabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2" style={{ borderLeft: "2px solid var(--border)" }}>
+                {([
+                  ["requireCamera", "Require camera"],
+                  ["requireIdentityPhoto", "Capture identity photo"],
+                  ["recordSnapshots", "Store webcam snapshots"],
+                  ["detectAudio", "Detect background voices"],
+                  ["requireScreen", "Require screen sharing"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-3 cursor-pointer text-sm">
+                    <input type="checkbox" name={`mediaProctoring.${key}`} checked={formData.mediaProctoring?.[key] || false} onChange={handleChange} className="w-4 h-4 rounded" />
+                    <span style={{ color: "var(--foreground)" }}>{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Rules */}

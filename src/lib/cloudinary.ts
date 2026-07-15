@@ -31,9 +31,11 @@ export async function uploadToCloudinary(
   buffer: Buffer,
   folder: string,
   options: {
-    resourceType?: "image" | "raw" | "auto";
+    resourceType?: "image" | "raw" | "auto" | "video";
     transformation?: any[];
     publicId?: string;
+    /** "authenticated" makes the asset private (proctoring evidence). */
+    type?: "upload" | "authenticated";
   } = {}
 ): Promise<{ url: string; publicId: string }> {
   ensureConfigured();
@@ -42,6 +44,7 @@ export async function uploadToCloudinary(
     const uploadOptions: any = {
       folder,
       resource_type: options.resourceType || "image",
+      type: options.type || "upload",
     };
 
     if (options.transformation) {

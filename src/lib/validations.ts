@@ -68,6 +68,14 @@ export const createContestSchema = z.object({
   banner: z.string().url().nullable().optional(),
   isPublished: z.boolean().optional(),
   roomId: z.string().nullable().optional(),
+  mediaProctoring: z.object({
+    enabled: z.boolean().optional(),
+    requireCamera: z.boolean().optional(),
+    requireScreen: z.boolean().optional(),
+    requireIdentityPhoto: z.boolean().optional(),
+    recordSnapshots: z.boolean().optional(),
+    detectAudio: z.boolean().optional(),
+  }).optional(),
 });
 
 export const updateContestSchema = createContestSchema.partial();

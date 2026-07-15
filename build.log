@@ -6,15 +6,15 @@
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 5.1s
+✓ Compiled successfully in 5.9s
   Running TypeScript ...
-  Finished TypeScript in 10.9s ...
+  Finished TypeScript in 9.0s ...
   Collecting page data using 15 workers ...
   Generating static pages using 15 workers (0/55) ...
   Generating static pages using 15 workers (13/55) 
   Generating static pages using 15 workers (27/55) 
   Generating static pages using 15 workers (41/55) 
-✓ Generating static pages using 15 workers (55/55) in 460ms
+✓ Generating static pages using 15 workers (55/55) in 550ms
   Finalizing page optimization ...
 
 Route (app)
@@ -22,6 +22,7 @@ Route (app)
 ├ ○ /_not-found
 ├ ○ /admin/coding-library
 ├ ƒ /admin/contest/[contestId]/participants
+├ ƒ /admin/contest/[contestId]/proctoring
 ├ ƒ /admin/contest/[contestId]/user/[userId]/answers
 ├ ƒ /admin/contest/[contestId]/violations
 ├ ƒ /admin/contest/coding/[contestId]
@@ -101,8 +102,10 @@ Route (app)
 ├ ƒ /api/mcqs/library
 ├ ƒ /api/mcqs/submit
 ├ ƒ /api/proctor/[contestId]/flag
+├ ƒ /api/proctor/[contestId]/identity
 ├ ƒ /api/proctor/[contestId]/overview
 ├ ƒ /api/proctor/[contestId]/session/[userId]
+├ ƒ /api/proctor/[contestId]/snapshot
 ├ ƒ /api/results/[resultId]
 ├ ƒ /api/rooms
 ├ ƒ /api/rooms/[id]

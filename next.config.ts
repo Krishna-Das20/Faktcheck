@@ -24,8 +24,11 @@ const nextConfig: NextConfig = {
             value: "max-age=31536000; includeSubDomains",
           },
           {
+            // Allow camera/mic/screen capture on our own origin for proctoring;
+            // geolocation stays disabled.
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value:
+              "camera=(self), microphone=(self), display-capture=(self), geolocation=()",
           },
         ],
       },

@@ -153,13 +153,22 @@ export default function ContestViolationsPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={fetchViolations}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push(`/admin/contest/${contestId}/proctoring`)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              Risk Review
+            </button>
+            <button
+              onClick={fetchViolations}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}

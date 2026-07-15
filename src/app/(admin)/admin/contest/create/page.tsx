@@ -42,6 +42,14 @@ function CreateContestContent() {
     rules: ["No cheating allowed", "Complete all questions within time limit"],
     prizes: ["1st Prize: Certificate + Goodies", "2nd Prize: Certificate", "3rd Prize: Certificate"],
     isPublished: false,
+    mediaProctoring: {
+      enabled: false,
+      requireCamera: true,
+      requireScreen: false,
+      requireIdentityPhoto: true,
+      recordSnapshots: true,
+      detectAudio: false,
+    },
   });
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -95,6 +103,11 @@ function CreateContestContent() {
           (updated as any)[parts[0]] = {
             ...(updated as any)[parts[0]],
             [parts[1]]: { ...(updated as any)[parts[0]][parts[1]], [parts[2]]: value },
+          };
+        } else if (parts.length === 2) {
+          (updated as any)[parts[0]] = {
+            ...(updated as any)[parts[0]],
+            [parts[1]]: value,
           };
         }
         return updated;
@@ -291,6 +304,44 @@ function CreateContestContent() {
             <SectionBlock name="mcq" label="MCQ Section" />
             <SectionBlock name="coding" label="Coding Section" />
             <SectionBlock name="forms" label="Custom Forms Section" />
+          </div>
+
+          {/* Media Proctoring */}
+          <div className="rounded-xl p-6 space-y-4" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
+            <div>
+              <h2 className="text-xl font-bold text-strong">Advanced Proctoring (Camera / Screen)</h2>
+              <p className="text-sm mt-1" style={{ color: "var(--foreground-secondary)" }}>
+                Optional. Adds a pre-exam system check, consent, identity capture, and on-device
+                camera monitoring (face presence, multiple-faces) with adaptive snapshot evidence.
+                Applies to proctored sections only. Requires Cloudinary storage.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="mediaProctoring.enabled" checked={formData.mediaProctoring.enabled} onChange={handleChange} className="w-5 h-5 rounded" />
+              <span className="font-medium" style={{ color: "var(--foreground)" }}>Enable advanced proctoring</span>
+            </label>
+            {formData.mediaProctoring.enabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2" style={{ borderLeft: "2px solid var(--border)" }}>
+                {([
+                  ["requireCamera", "Require camera"],
+                  ["requireIdentityPhoto", "Capture identity photo"],
+                  ["recordSnapshots", "Store webcam snapshots"],
+                  ["detectAudio", "Detect background voices"],
+                  ["requireScreen", "Require screen sharing"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-3 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      name={`mediaProctoring.${key}`}
+                      checked={(formData.mediaProctoring as any)[key]}
+                      onChange={handleChange}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span style={{ color: "var(--foreground)" }}>{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Rules */}

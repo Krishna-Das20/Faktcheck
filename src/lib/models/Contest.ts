@@ -32,6 +32,14 @@ export interface IContest extends Document {
   roomId: mongoose.Types.ObjectId | null;
   manuallyEnded: boolean;
   endedBy: mongoose.Types.ObjectId | null;
+  mediaProctoring: {
+    enabled: boolean;
+    requireCamera: boolean;
+    requireScreen: boolean;
+    requireIdentityPhoto: boolean;
+    recordSnapshots: boolean;
+    detectAudio: boolean;
+  };
   totalMarks: number; // virtual
   createdAt: Date;
   updatedAt: Date;
@@ -138,6 +146,16 @@ const contestSchema = new Schema<IContest>(
       type: Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    // Media (camera/mic/screen) proctoring config — all default off, so
+    // existing contests behave exactly as before (browser-event proctoring only).
+    mediaProctoring: {
+      enabled: { type: Boolean, default: false },
+      requireCamera: { type: Boolean, default: true },
+      requireScreen: { type: Boolean, default: false },
+      requireIdentityPhoto: { type: Boolean, default: true },
+      recordSnapshots: { type: Boolean, default: true },
+      detectAudio: { type: Boolean, default: false },
     },
   },
   {
