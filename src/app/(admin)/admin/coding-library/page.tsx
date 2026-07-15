@@ -15,6 +15,7 @@ import {
   Code,
 } from "lucide-react";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MultiImageUpload from "@/components/ui/MultiImageUpload";
 
 const CODING_CATEGORIES = ["GENERAL", "DSA", "ALGORITHMS", "DATABASE", "SYSTEM_DESIGN"];
 const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"];
@@ -44,6 +45,7 @@ export default function CodingLibraryPage() {
     tags: "",
     imageUrl: "",
     imagePublicId: "",
+    images: [] as {url: string; publicId: string}[],
     isPublic: true,
   });
 
@@ -78,6 +80,7 @@ export default function CodingLibraryPage() {
         ...formData,
         constraints: formData.constraints.split("\n").filter(Boolean),
         tags: formData.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        images: formData.images || [],
         isPublic: isAdmin ? formData.isPublic : false,
         isLibrary: true,
       };
@@ -123,6 +126,7 @@ export default function CodingLibraryPage() {
       tags: problem.tags?.join(", ") || "",
       imageUrl: problem.imageUrl || "",
       imagePublicId: problem.imagePublicId || "",
+      images: problem.images || (problem.imageUrl ? [{ url: problem.imageUrl, publicId: problem.imagePublicId || '' }] : []),
       isPublic: problem.isPublic || false,
     });
     setShowModal(true);
@@ -161,6 +165,7 @@ export default function CodingLibraryPage() {
       tags: "",
       imageUrl: "",
       imagePublicId: "",
+      images: [],
       isPublic: true,
     });
   };
@@ -573,10 +578,10 @@ export default function CodingLibraryPage() {
               </div>
 
               <div>
-                <ImageUpload
-                  value={formData.imageUrl || null}
-                  onChange={(data) => setFormData({ ...formData, imageUrl: data?.url || "", imagePublicId: data?.publicId || "" })}
-                  label="Problem Image (optional)"
+                <MultiImageUpload
+                  images={formData.images || []}
+                  onChange={(imgs) => setFormData({ ...formData, images: imgs })}
+                  label="Problem Images (optional)"
                 />
               </div>
 

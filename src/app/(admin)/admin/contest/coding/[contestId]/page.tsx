@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { Code, ArrowLeft, Plus, Trash2, Save, Edit, X, Library, Search, Timer, HardDrive } from "lucide-react";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MultiImageUpload from "@/components/ui/MultiImageUpload";
 
 const CODING_CATEGORIES = ["Arrays", "Strings", "Trees", "Graphs", "DP", "Greedy", "Sorting", "Searching", "Math", "Other"];
 
@@ -39,6 +40,7 @@ export default function ManageCodingPage() {
     testcases: [{ input: "", expectedOutput: "", points: 10, isHidden: false }],
     timeLimit: 2000, memoryLimit: 256, tags: [] as string[], order: 1,
     imageUrl: null as string | null, imagePublicId: null as string | null,
+    images: [] as {url: string; publicId: string}[],
   };
   const [form, setForm] = useState<any>({ ...defaultForm, order: 1 });
 
@@ -114,6 +116,7 @@ export default function ManageCodingPage() {
         timeLimit: parseInt(form.timeLimit),
         memoryLimit: parseInt(form.memoryLimit),
         imageUrl: form.imageUrl, imagePublicId: form.imagePublicId,
+        images: form.images || [],
         ...(!editingId && saveToLibrary ? { saveToLibrary: true, libraryIsPublic: isAdmin ? libraryIsPublic : false } : {}),
       };
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -159,6 +162,7 @@ export default function ManageCodingPage() {
       timeLimit: p.timeLimit || 2000, memoryLimit: p.memoryLimit || 256,
       tags: p.tags || [], order: p.order || 1,
       imageUrl: p.imageUrl || null, imagePublicId: p.imagePublicId || null,
+      images: p.images || (p.imageUrl ? [{ url: p.imageUrl, publicId: p.imagePublicId || '' }] : []),
     });
     setEditingId(p._id);
     setShowForm(true);
@@ -318,10 +322,10 @@ export default function ManageCodingPage() {
               </div>
             </div>
 
-            <ImageUpload
-              value={form.imageUrl}
-              onChange={(data) => setForm({ ...form, imageUrl: data?.url || null, imagePublicId: data?.publicId || null })}
-              label="Problem Image (optional)"
+            <MultiImageUpload
+              images={form.images || []}
+              onChange={(imgs) => setForm({ ...form, images: imgs })}
+              label="Problem Images (optional)"
             />
 
             {/* Save to Library toggle */}
@@ -396,7 +400,13 @@ export default function ManageCodingPage() {
                       <span>Acceptance: <span style={{ color: "#22C55E" }}>{((p.acceptedCount / p.submissionCount) * 100).toFixed(1)}%</span></span>
                     )}
                   </div>
-                  {p.imageUrl && <img src={p.imageUrl} alt={p.title} className="rounded-lg max-h-20 mt-2 object-contain" />}
+                  {(p.images?.length > 0 || p.imageUrl) && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(p.images?.length > 0 ? p.images : p.imageUrl ? [{ url: p.imageUrl }] : []).map((img: any, idx: number) => (
+                        <img key={idx} src={img.url} alt={`${p.title} ${idx + 1}`} className="rounded-lg max-h-20 object-contain" />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => startEdit(p)} className="p-2 rounded-lg hover:opacity-80"><Edit className="w-4 h-4" style={{ color: "#EAB308" }} /></button>

@@ -1,88 +1,157 @@
-﻿
+
 > faktcheck@0.1.0 build C:\Users\KIIT\Downloads\Koding\faktcheck
 > next build
 
-Γû▓ Next.js 16.2.2 (Turbopack)
+▲ Next.js 16.2.2 (Turbopack)
 - Environments: .env.local
 
   Creating an optimized production build ...
-node.exe : Turbopack build encountered 2 
-warnings:
-At 
-C:\Users\KIIT\AppData\Roaming\npm\pnpm.ps1:24 
-char:5
-+     & "node$exe"  
-"$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
-+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (Tu 
-   rbopack build encountered 2 warnings::Strin  
-  g) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandErro 
-   r
- 
-[next]/internal/font/google/fira_code_a166c59a.m
-odule.css
-Error while requesting resource
-There was an issue establishing a connection 
-while requesting https://fonts.googleapis.com/cs
-s2?family=Fira+Code:wght@300..700&display=swap
+✓ Compiled successfully in 4.5s
+  Running TypeScript ...
+  Finished TypeScript in 7.7s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/55) ...
+  Generating static pages using 15 workers (13/55) 
+  Generating static pages using 15 workers (27/55) 
+  Generating static pages using 15 workers (41/55) 
+✓ Generating static pages using 15 workers (55/55) in 513ms
+  Finalizing page optimization ...
 
-Import trace:
-  Server Component:
-    [next]/internal/font/google/fira_code_a166c5
-9a.module.css
-    [next]/internal/font/google/fira_code_a166c5
-9a.js
-    ./src/app/layout.tsx
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin/coding-library
+├ ƒ /admin/contest/[contestId]/participants
+├ ƒ /admin/contest/[contestId]/user/[userId]/answers
+├ ƒ /admin/contest/[contestId]/violations
+├ ƒ /admin/contest/coding/[contestId]
+├ ○ /admin/contest/create
+├ ƒ /admin/contest/edit/[contestId]
+├ ƒ /admin/contest/evaluate/[contestId]
+├ ƒ /admin/contest/forms/[contestId]
+├ ƒ /admin/contest/forms/[contestId]/[formId]
+├ ƒ /admin/contest/mcq/[contestId]
+├ ○ /admin/dashboard
+├ ○ /admin/mcq-library
+├ ○ /admin/rooms
+├ ○ /admin/users
+├ ○ /admin/verify-contests
+├ ƒ /api/admin/contests/[id]/verify
+├ ƒ /api/admin/contests/pending
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[id]/role
+├ ƒ /api/ai/coding/generate
+├ ƒ /api/ai/coding/improve
+├ ƒ /api/ai/mcq/generate
+├ ƒ /api/ai/mcq/improve
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/google
+├ ƒ /api/auth/login
+├ ƒ /api/auth/me
+├ ƒ /api/auth/resend-otp
+├ ƒ /api/auth/reset-password
+├ ƒ /api/auth/send-otp
+├ ƒ /api/auth/sse
+├ ƒ /api/auth/verify-otp
+├ ƒ /api/coding
+├ ƒ /api/coding/[id]
+├ ƒ /api/coding/contest/[contestId]
+├ ƒ /api/coding/contest/[contestId]/add-from-library
+├ ƒ /api/coding/contest/[contestId]/remove/[problemId]
+├ ƒ /api/coding/contest/[contestId]/review
+├ ƒ /api/coding/library
+├ ƒ /api/contests
+├ ƒ /api/contests/[id]
+├ ƒ /api/contests/[id]/emergency-save
+├ ƒ /api/contests/[id]/end
+├ ƒ /api/contests/[id]/participants
+├ ƒ /api/contests/[id]/progress
+├ ƒ /api/contests/[id]/register
+├ ƒ /api/contests/[id]/registration-status
+├ ƒ /api/contests/[id]/save-progress
+├ ƒ /api/contests/[id]/sections/[section]/start
+├ ƒ /api/contests/[id]/sections/[section]/submit
+├ ƒ /api/contests/[id]/start
+├ ƒ /api/contests/[id]/submit
+├ ƒ /api/contests/[id]/track-time
+├ ƒ /api/contests/[id]/violation
+├ ƒ /api/contests/admin
+├ ƒ /api/contests/my
+├ ƒ /api/cron/update-statuses
+├ ƒ /api/form-submissions
+├ ƒ /api/form-submissions/[id]
+├ ƒ /api/form-submissions/[id]/evaluate
+├ ƒ /api/form-submissions/[id]/request-notification
+├ ƒ /api/form-submissions/contest/[contestId]
+├ ƒ /api/form-submissions/my/[contestId]
+├ ƒ /api/forms
+├ ƒ /api/forms/[id]
+├ ƒ /api/forms/contest/[contestId]
+├ ƒ /api/leaderboard/[contestId]
+├ ƒ /api/leaderboard/[contestId]/certificate
+├ ƒ /api/leaderboard/[contestId]/rank
+├ ƒ /api/leaderboard/[contestId]/stats
+├ ƒ /api/leaderboard/[contestId]/user/[userId]/details
+├ ƒ /api/mcqs
+├ ƒ /api/mcqs/[id]
+├ ƒ /api/mcqs/contest/[contestId]
+├ ƒ /api/mcqs/contest/[contestId]/add-from-library
+├ ƒ /api/mcqs/contest/[contestId]/remove/[mcqId]
+├ ƒ /api/mcqs/contest/[contestId]/review
+├ ƒ /api/mcqs/library
+├ ƒ /api/mcqs/submit
+├ ƒ /api/results/[resultId]
+├ ƒ /api/rooms
+├ ƒ /api/rooms/[id]
+├ ƒ /api/rooms/[id]/announcements
+├ ƒ /api/rooms/[id]/announcements/[announcementId]
+├ ƒ /api/rooms/[id]/announcements/[announcementId]/pin
+├ ƒ /api/rooms/[id]/invite
+├ ƒ /api/rooms/[id]/leave
+├ ƒ /api/rooms/[id]/members
+├ ƒ /api/rooms/[id]/members/[userId]
+├ ƒ /api/rooms/accept-invite/[token]
+├ ƒ /api/rooms/join
+├ ƒ /api/rooms/join/[shortCode]
+├ ƒ /api/submissions
+├ ƒ /api/submissions/[id]
+├ ƒ /api/submissions/check-all
+├ ƒ /api/submissions/contest/[contestId]/pending
+├ ƒ /api/submissions/contest/[contestId]/progress
+├ ƒ /api/submissions/contest/[contestId]/review
+├ ƒ /api/submissions/problem/[problemId]
+├ ƒ /api/submissions/test
+├ ƒ /api/upload/file
+├ ƒ /api/upload/image
+├ ƒ /api/upload/image/[publicId]
+├ ƒ /api/upload/image/cleanup
+├ ƒ /api/upload/status
+├ ƒ /certificate/[resultId]
+├ ƒ /contest/[contestId]
+├ ƒ /contest/[contestId]/coding
+├ ƒ /contest/[contestId]/forms
+├ ƒ /contest/[contestId]/hub
+├ ƒ /contest/[contestId]/mcq
+├ ƒ /contest/[contestId]/review
+├ ○ /contests
+├ ƒ /contests/[id]
+├ ○ /dashboard
+├ ○ /forgot-password
+├ ○ /leaderboard
+├ ƒ /leaderboard/[contestId]
+├ ○ /login
+├ ○ /register
+├ ○ /reset-password
+├ ○ /rooms
+├ ƒ /rooms/[roomId]
+├ ƒ /rooms/accept-invite/[token]
+├ ○ /rooms/create
+├ ƒ /rooms/join/[shortCode]
+└ ○ /verify-otp
 
 
-[next]/internal/font/google/inter_c15e96cb.modul
-e.css
-Error while requesting resource
-There was an issue establishing a connection 
-while requesting https://fonts.googleapis.com/cs
-s2?family=Inter:wght@100..900&display=swap
+ƒ Proxy (Middleware)
 
-Import trace:
-  Server Component:
-    [next]/internal/font/google/inter_c15e96cb.m
-odule.css
-    
-[next]/internal/font/google/inter_c15e96cb.js
-    ./src/app/layout.tsx
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
 
-
-
-> Build error occurred
-Error: Turbopack build failed with 2 errors:
-[next]/internal/font/google/fira_code_a166c59a.m
-odule.css
-next/font: error:
-Failed to fetch `Fira Code` from Google Fonts.
-
-Import trace:
-  Server Component:
-    [next]/internal/font/google/fira_code_a166c5
-9a.module.css
-    [next]/internal/font/google/fira_code_a166c5
-9a.js
-    ./src/app/layout.tsx
-
-
-[next]/internal/font/google/inter_c15e96cb.modul
-e.css
-next/font: error:
-Failed to fetch `Inter` from Google Fonts.
-
-Import trace:
-  Server Component:
-    [next]/internal/font/google/inter_c15e96cb.m
-odule.css
-    
-[next]/internal/font/google/inter_c15e96cb.js
-    ./src/app/layout.tsx
-
-
-    at ignore-listed frames
-ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

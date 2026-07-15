@@ -33,7 +33,8 @@ export async function GET(
 
     const submissions = await Submission.find(filter)
       .sort({ submittedAt: -1 })
-      .select("-sourceCode"); // Don't send full source in list view
+      .select("-sourceCode") // Don't send full source in list view
+      .lean();
 
     return successResponse({
       count: submissions.length,

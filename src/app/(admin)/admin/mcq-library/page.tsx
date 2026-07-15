@@ -14,6 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MultiImageUpload from "@/components/ui/MultiImageUpload";
 
 const MCQ_CATEGORIES = ["GENERAL", "APTITUDE", "TECHNICAL", "REASONING", "ENTREPRENEURSHIP"];
 const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"];
@@ -43,6 +44,7 @@ export default function MCQLibraryPage() {
     tags: "",
     imageUrl: "",
     imagePublicId: "",
+    images: [] as {url: string; publicId: string}[],
     isPublic: true,
   });
 
@@ -81,6 +83,7 @@ export default function MCQLibraryPage() {
     try {
       const payload = {
         ...formData,
+        images: formData.images,
         tags: formData.tags
           .split(",")
           .map((t) => t.trim())
@@ -128,6 +131,7 @@ export default function MCQLibraryPage() {
       tags: mcq.tags?.join(", ") || "",
       imageUrl: mcq.imageUrl || "",
       imagePublicId: mcq.imagePublicId || "",
+      images: mcq.images || (mcq.imageUrl ? [{ url: mcq.imageUrl, publicId: mcq.imagePublicId || '' }] : []),
       isPublic: mcq.isPublic || false,
     });
     setShowModal(true);
@@ -166,6 +170,7 @@ export default function MCQLibraryPage() {
       tags: "",
       imageUrl: "",
       imagePublicId: "",
+      images: [],
       isPublic: true,
     });
   };
@@ -530,10 +535,10 @@ export default function MCQLibraryPage() {
               </div>
 
               <div>
-                <ImageUpload
-                  value={formData.imageUrl || null}
-                  onChange={(data) => setFormData({ ...formData, imageUrl: data?.url || "", imagePublicId: data?.publicId || "" })}
-                  label="Question Image (optional)"
+                <MultiImageUpload
+                  images={formData.images || []}
+                  onChange={(imgs) => setFormData({ ...formData, images: imgs })}
+                  label="Question Images (optional)"
                 />
               </div>
 

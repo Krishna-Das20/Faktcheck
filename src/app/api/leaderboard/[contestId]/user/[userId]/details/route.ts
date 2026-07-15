@@ -11,6 +11,7 @@ import FormSubmission from "@/lib/models/FormSubmission";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { DEFAULT_MAX_SCORE } from "@/lib/constants";
 
 // GET /api/leaderboard/[contestId]/user/[userId]/details
 export async function GET(
@@ -25,15 +26,15 @@ export async function GET(
     const { contestId, userId } = await params;
     await connectDB();
 
-    // Get contest progress
-    const progress = await ContestProgress.findOne({ contestId, userId })
-      .populate("userId", "name email")
-      .lean() as any;
+    // Get contest progress + result in parallel
+    const [progress, result] = await Promise.all([
+      ContestProgress.findOne({ contestId, userId })
+        .populate("userId", "name email")
+        .lean(),
+      Result.findOne({ contestId, userId }).lean(),
+    ]) as [any, any];
 
     if (!progress) return errorResponse("No progress found", 404);
-
-    // Get result for scores
-    const result = await Result.findOne({ contestId, userId }).lean() as any;
 
     // --- MCQ Time Details ---
     const mcqIds = progress.mcqProgress?.questionTimes?.map((q: any) => q.questionId) || [];
@@ -158,24 +159,38 @@ export async function GET(
 
     const allProblems = Array.from(problemMergeMap.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
 
+    // Batch-fetch all submissions for all problems at once (avoids N+1)
+    const allSubmissions = await Submission.find({
+      userId, contestId,
+      problemId: { $in: allProblems.map((p: any) => p._id) }
+    }).select("problemId verdict score testcasesPassed totalTestcases language submittedAt")
+      .sort({ submittedAt: 1 })
+      .lean() as any[];
+
+    // Group submissions by problemId
+    const subsByProblem = new Map<string, any[]>();
+    for (const sub of allSubmissions) {
+      const key = sub.problemId.toString();
+      if (!subsByProblem.has(key)) subsByProblem.set(key, []);
+      subsByProblem.get(key)!.push(sub);
+    }
+
     const codingAnswerDetails: any[] = [];
     for (const problem of allProblems) {
-      const allSubs = await Submission.find({ userId, contestId, problemId: problem._id })
-        .select("verdict score testcasesPassed totalTestcases language submittedAt")
-        .sort({ submittedAt: 1 })
-        .lean() as any[];
+      const allSubs = subsByProblem.get(problem._id.toString()) || [];
 
       if (allSubs.length > 0) {
         codingAnswerDetails.push({
           problemId: problem._id,
           title: problem.title,
           category: problem.category || "Unknown",
-          maxScore: problem.score || 100,
+          maxScore: problem.score || DEFAULT_MAX_SCORE,
           bestScore: Math.max(...allSubs.map((s: any) => s.score || 0), 0),
           solved: allSubs.some((s: any) => s.verdict === "ACCEPTED"),
           totalAttempts: allSubs.length,
           unanswered: false,
           submissions: allSubs.map((sub: any) => ({
+            submissionId: sub._id,
             verdict: sub.verdict,
             score: sub.score,
             testcasesPassed: sub.testcasesPassed,

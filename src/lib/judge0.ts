@@ -7,6 +7,9 @@ const JUDGE0_API_URL =
   process.env.JUDGE0_API_URL || "http://localhost:2358";
 const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY || "";
 
+// Timeout for Judge0 API calls (15 seconds)
+const JUDGE0_TIMEOUT_MS = 15000;
+
 // Base64 encode/decode helpers
 const toBase64 = (str: string): string =>
   Buffer.from(str || "").toString("base64");
@@ -25,6 +28,24 @@ function getHeaders(): Record<string, string> {
 }
 
 /**
+ * Fetch with timeout using AbortController.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = JUDGE0_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
  * Submit a single code to Judge0 and poll for results.
  */
 export async function submitToJudge0(
@@ -34,7 +55,7 @@ export async function submitToJudge0(
   expectedOutput: string
 ) {
   // Create submission
-  const createRes = await fetch(
+  const createRes = await fetchWithTimeout(
     `${JUDGE0_API_URL}/submissions?base64_encoded=true`,
     {
       method: "POST",
@@ -56,21 +77,41 @@ export async function submitToJudge0(
 
   const { token } = await createRes.json();
 
-  // Poll for result
+  // Poll for result with exponential backoff
   let result: any;
-  const maxAttempts = 10;
+  const maxAttempts = 12;
+  const baseDelay = 500; // Start at 500ms
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const delay = Math.min(baseDelay * Math.pow(1.5, attempt), 3000); // Cap at 3s
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
-    const pollRes = await fetch(
-      `${JUDGE0_API_URL}/submissions/${token}?base64_encoded=true`,
-      { headers: getHeaders() }
-    );
-    result = await pollRes.json();
+    try {
+      const pollRes = await fetchWithTimeout(
+        `${JUDGE0_API_URL}/submissions/${token}?base64_encoded=true`,
+        { headers: getHeaders() }
+      );
 
-    // Status > 2 means completed (1=In Queue, 2=Processing)
-    if (result.status.id > 2) break;
+      if (!pollRes.ok) {
+        console.error(`Judge0 poll failed (attempt ${attempt + 1}): ${pollRes.statusText}`);
+        continue;
+      }
+
+      result = await pollRes.json();
+
+      // Status > 2 means completed (1=In Queue, 2=Processing)
+      if (result.status?.id > 2) break;
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.error(`Judge0 poll timed out (attempt ${attempt + 1})`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!result || !result.status || result.status.id <= 2) {
+    throw new Error("Judge0 submission timed out — code was not evaluated in time");
   }
 
   // Decode base64 fields

@@ -191,19 +191,31 @@ export const inviteSchema = z.object({
 // FORM SCHEMAS
 // ====================================
 
+export const formFieldSchema = z.object({
+  fieldId: z.string().optional(), // generated server-side when missing
+  type: z.enum(["TEXT", "TEXTAREA", "RADIO", "CHECKBOX", "NUMBER", "URL", "DATE", "FILE"]),
+  label: z.string().min(1, "Field label is required"),
+  required: z.boolean().optional(),
+  placeholder: z.string().max(500).optional(),
+  options: z.array(z.string()).optional(),
+  correctAnswers: z.array(z.string()).optional(),
+  isAutoScored: z.boolean().optional(),
+  marks: z.number().min(0).optional(),
+  order: z.number().min(0).optional(),
+  descriptionImage: z.string().nullable().optional(),
+  allowedFileTypes: z.array(z.string()).optional(),
+  maxFileSize: z.number().min(0).optional(),
+});
+
 export const createFormSchema = z.object({
   contestId: z.string().min(1, "Contest ID is required"),
   title: z.string().min(1, "Title is required").max(200).trim(),
   description: z.string().max(1000).optional(),
-  fields: z.array(z.object({
-    label: z.string().min(1),
-    type: z.enum(["TEXT", "TEXTAREA", "NUMBER", "FILE_UPLOAD", "URL", "SELECT", "CHECKBOX"]),
-    required: z.boolean().optional(),
-    options: z.array(z.string()).optional(),
-    maxScore: z.number().min(0).optional(),
-  })).min(1, "At least one field is required"),
+  fields: z.array(formFieldSchema).min(1, "At least one field is required"),
   order: z.number().min(0).optional(),
 });
+
+export const updateFormSchema = createFormSchema.partial().omit({ contestId: true });
 
 export const evaluateSubmissionSchema = z.object({
   evaluations: z.array(z.object({

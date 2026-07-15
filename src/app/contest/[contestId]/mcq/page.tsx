@@ -30,6 +30,7 @@ interface MCQQuestion {
   difficulty?: string;
   category?: string;
   imageUrl?: string;
+  images?: { url: string; publicId: string }[];
   order?: number;
 }
 
@@ -526,18 +527,25 @@ export default function MCQSectionPage() {
                   {currentMCQ.question}
                 </p>
 
-                {currentMCQ.imageUrl && (
-                  <div className="mt-4">
-                    <img
-                      src={currentMCQ.imageUrl}
-                      alt="Question"
-                      className="max-w-full max-h-80 rounded-lg"
-                      style={{ border: "1px solid var(--border)" }}
-                      onContextMenu={(e) => e.preventDefault()}
-                      draggable="false"
-                    />
-                  </div>
-                )}
+                {/* Question Images (multi-image + backward compat) */}
+                {(() => {
+                  const imgs = currentMCQ.images?.length ? currentMCQ.images : currentMCQ.imageUrl ? [{ url: currentMCQ.imageUrl, publicId: '' }] : [];
+                  return imgs.length > 0 && (
+                    <div className={`mt-4 flex flex-wrap gap-3 ${imgs.length === 1 ? '' : ''}`}>
+                      {imgs.map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={img.url}
+                          alt={`Question image ${idx + 1}`}
+                          className="max-w-full max-h-80 rounded-lg"
+                          style={{ border: "1px solid var(--border)" }}
+                          onContextMenu={(e) => e.preventDefault()}
+                          draggable="false"
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {isMultipleAnswer && (
                   <p

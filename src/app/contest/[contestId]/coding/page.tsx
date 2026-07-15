@@ -25,8 +25,15 @@ import {
 } from "lucide-react";
 import { LANGUAGES, DEFAULT_CODE, DIFFICULTY_COLORS } from "@/lib/constants";
 
-// Dynamic import Monaco — no SSR
-const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
+// Dynamic import Monaco — no SSR, with loading placeholder
+const Editor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-dark-800 animate-pulse rounded-lg flex items-center justify-center">
+      <span className="text-gray-400 text-sm">Loading editor...</span>
+    </div>
+  ),
+});
 
 interface LanguageOption {
   id: number;
@@ -871,18 +878,25 @@ export default function CodingSectionPage() {
                   >
                     {problem.description}
                   </p>
-                  {problem.imageUrl && (
-                    <div className="mt-4">
-                      <img
-                        src={problem.imageUrl}
-                        alt="Problem"
-                        className="max-w-full max-h-80 rounded-lg"
-                        style={{ border: "1px solid var(--border)" }}
-                        onContextMenu={(e) => e.preventDefault()}
-                        draggable="false"
-                      />
-                    </div>
-                  )}
+                  {/* Problem Images (multi-image + backward compat) */}
+                  {(() => {
+                    const imgs = (problem as any).images?.length ? (problem as any).images : problem.imageUrl ? [{ url: problem.imageUrl }] : [];
+                    return imgs.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        {imgs.map((img: any, idx: number) => (
+                          <img
+                            key={idx}
+                            src={img.url}
+                            alt={`Problem image ${idx + 1}`}
+                            className="max-w-full max-h-80 rounded-lg"
+                            style={{ border: "1px solid var(--border)" }}
+                            onContextMenu={(e) => e.preventDefault()}
+                            draggable="false"
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {problem.inputFormat && (

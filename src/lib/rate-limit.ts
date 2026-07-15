@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/api-auth";
+import connectDB from "@/lib/db";
+import RateLimit from "@/lib/models/RateLimit";
 
 // =====================================================
 // SMART RATE LIMITER
@@ -89,6 +91,67 @@ function checkLimit(
 }
 
 /**
+ * Durable variant of checkLimit backed by MongoDB (TTL collection).
+ * Survives serverless cold starts and multiple instances.
+ * Falls back to the in-memory limiter if the database is unreachable.
+ */
+async function checkLimitDurable(
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  try {
+    await connectDB();
+    const now = new Date();
+
+    // Atomically increment the counter for a still-open window
+    let entry = await RateLimit.findOneAndUpdate(
+      { key, resetAt: { $gt: now } },
+      { $inc: { count: 1 } },
+      { new: true }
+    );
+
+    if (!entry) {
+      // No open window — start a fresh one (upsert handles expired docs
+      // that the TTL monitor hasn't removed yet)
+      try {
+        entry = await RateLimit.findOneAndUpdate(
+          { key },
+          { $set: { count: 1, resetAt: new Date(now.getTime() + windowMs) } },
+          { upsert: true, new: true }
+        );
+      } catch (err: any) {
+        // Duplicate-key race with a concurrent request — retry the increment
+        if (err?.code === 11000) {
+          entry = await RateLimit.findOneAndUpdate(
+            { key },
+            { $inc: { count: 1 } },
+            { new: true }
+          );
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (!entry) {
+      // Should not happen; fail open rather than blocking legitimate logins
+      return { allowed: true, remaining: maxRequests - 1, resetAt: now.getTime() + windowMs };
+    }
+
+    return {
+      allowed: entry.count <= maxRequests,
+      remaining: Math.max(0, maxRequests - entry.count),
+      resetAt: new Date(entry.resetAt).getTime(),
+    };
+  } catch (err) {
+    // DB unavailable — degrade to the in-memory limiter instead of failing open
+    console.error("Durable rate limit unavailable, falling back to in-memory:", err);
+    return checkLimit(key, maxRequests, windowMs);
+  }
+}
+
+/**
  * Get client IP from request (handles proxies like Vercel/nginx).
  */
 function getClientIP(request: NextRequest): string {
@@ -113,6 +176,12 @@ export interface RateLimitConfig {
   keyStrategy: "user" | "ip" | "ip-email" | "ip-identifier";
   /** Optional identifier field name in request body (for ip-identifier strategy) */
   identifierField?: string;
+  /**
+   * Durable limits are counted in MongoDB (TTL collection) so they survive
+   * serverless cold starts and multiple instances. Use for auth-sensitive
+   * routes; leave off for high-frequency API routes.
+   */
+  durable?: boolean;
 }
 
 /** Presets for common route categories */
@@ -125,6 +194,7 @@ export const RATE_LIMIT_PRESETS = {
     windowMs: 15 * 60 * 1000,
     keyStrategy: "ip-identifier" as const,
     identifierField: "email",
+    durable: true,
   },
 
   // Registration: similar to login but slightly lower
@@ -133,6 +203,7 @@ export const RATE_LIMIT_PRESETS = {
     windowMs: 15 * 60 * 1000,
     keyStrategy: "ip-identifier" as const,
     identifierField: "email",
+    durable: true,
   },
 
   // OTP/Password reset: tighter limit per email
@@ -141,6 +212,7 @@ export const RATE_LIMIT_PRESETS = {
     windowMs: 15 * 60 * 1000,
     keyStrategy: "ip-identifier" as const,
     identifierField: "email",
+    durable: true,
   },
 
   // Authenticated API calls: per user
@@ -256,7 +328,9 @@ export async function rateLimit(
   const pathname = request.nextUrl.pathname;
   const fullKey = `${pathname}:${key}`;
 
-  const result = checkLimit(fullKey, config.maxRequests, config.windowMs);
+  const result = config.durable
+    ? await checkLimitDurable(fullKey, config.maxRequests, config.windowMs)
+    : checkLimit(fullKey, config.maxRequests, config.windowMs);
 
   if (!result.allowed) {
     const retryAfterSeconds = Math.ceil((result.resetAt - Date.now()) / 1000);

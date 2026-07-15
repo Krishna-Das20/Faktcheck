@@ -1,6 +1,18 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import OnboardingWrapper from "@/components/common/OnboardingWrapper";
+
+export const metadata: Metadata = {
+  title: {
+    default: "FaktCheck",
+    template: "%s | FaktCheck",
+  },
+  openGraph: {
+    siteName: "FaktCheck",
+    type: "website",
+  },
+};
 
 /**
  * (main) route group layout — With Navbar + Footer.

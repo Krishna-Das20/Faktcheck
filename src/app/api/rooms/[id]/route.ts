@@ -41,7 +41,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     const contests = await Contest.find({ roomId: room._id })
       .select("title description startTime endTime status sections createdBy")
       .populate("createdBy", "name email")
-      .sort({ startTime: -1 });
+      .sort({ startTime: -1 })
+      .lean();
 
     const ownerId = (room.owner as any)?._id?.toString() || room.owner?.toString();
 

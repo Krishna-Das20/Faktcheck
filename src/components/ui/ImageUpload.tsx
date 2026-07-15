@@ -46,9 +46,9 @@ export default function ImageUpload({
       if (!file) return;
 
       // Client-side validation
-      const maxSize = 1 * 1024 * 1024; // 1MB limit
+      const maxSize = 5 * 1024 * 1024; // 5MB limit
       if (file.size > maxSize) {
-        toast.error("File too large. Max size is 1MB.");
+        toast.error("File too large. Max size is 5MB.");
         return;
       }
 
@@ -208,8 +208,8 @@ export default function ImageUpload({
                   </p>
                   <p className="text-xs" style={{ color: "var(--foreground-secondary)" }}>
                     {type === "file"
-                      ? "Images, PDFs, Docs (max 1MB)"
-                      : "JPG, PNG, GIF, WebP (max 1MB)"}
+                      ? "Images, PDFs, Docs (max 5MB)"
+                      : "JPG, PNG, GIF, WebP (max 5MB)"}
                   </p>
                 </>
               )}

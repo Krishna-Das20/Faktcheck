@@ -3,12 +3,16 @@ import connectDB from "@/lib/db";
 import ContestProgress from "@/lib/models/ContestProgress";
 import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ id: string }> };
 
 // POST /api/contests/[id]/track-time — track per-question/problem time
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_SUBMIT);
+    if (limited) return limited;
+
     const user = await requireAuth(request);
     const { id } = await params;
     await connectDB();

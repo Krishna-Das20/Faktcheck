@@ -1,3 +1,6 @@
+// ─── Scoring ─────────────────────────────────────────────
+export const DEFAULT_MAX_SCORE = 100;
+
 // ─── Contest Status ──────────────────────────────────────
 export const CONTEST_STATUS = {
   UPCOMING: "UPCOMING",

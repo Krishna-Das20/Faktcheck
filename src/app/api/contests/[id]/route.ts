@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { id } = await params;
     await connectDB();
 
-    const contest = await Contest.findById(id).populate("createdBy", "name email");
+    const contest = await Contest.findById(id).populate("createdBy", "name email").lean();
     if (!contest) return errorResponse("Contest not found", 404);
 
     return successResponse({ contest });

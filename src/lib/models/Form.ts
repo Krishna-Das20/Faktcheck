@@ -4,7 +4,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IFormField {
   fieldId: string;
-  type: "TEXT" | "TEXTAREA" | "RADIO" | "CHECKBOX" | "NUMBER" | "URL" | "DATE";
+  type: "TEXT" | "TEXTAREA" | "RADIO" | "CHECKBOX" | "NUMBER" | "URL" | "DATE" | "FILE";
   label: string;
   required: boolean;
   placeholder: string;
@@ -13,6 +13,9 @@ export interface IFormField {
   isAutoScored: boolean;
   marks: number;
   order: number;
+  descriptionImage: string | null;
+  allowedFileTypes: string[];
+  maxFileSize: number;
 }
 
 export interface IForm extends Document {
@@ -32,7 +35,7 @@ const formFieldSchema = new Schema(
     fieldId: { type: String, required: true },
     type: {
       type: String,
-      enum: ["TEXT", "TEXTAREA", "RADIO", "CHECKBOX", "NUMBER", "URL", "DATE"],
+      enum: ["TEXT", "TEXTAREA", "RADIO", "CHECKBOX", "NUMBER", "URL", "DATE", "FILE"],
       required: true,
     },
     label: { type: String, required: true },
@@ -43,6 +46,9 @@ const formFieldSchema = new Schema(
     isAutoScored: { type: Boolean, default: false },
     marks: { type: Number, default: 0 },
     order: { type: Number, default: 0 },
+    descriptionImage: { type: String, default: null },
+    allowedFileTypes: [{ type: String }],
+    maxFileSize: { type: Number, default: 5 },
   },
   { _id: false }
 );
@@ -64,6 +70,8 @@ const formSchema = new Schema<IForm>(
 formSchema.pre("save", function () {
   this.totalMarks = this.fields.reduce((sum, field) => sum + (field.marks || 0), 0);
 });
+
+formSchema.index({ contestId: 1 });
 
 const Form: Model<IForm> =
   mongoose.models.Form || mongoose.model<IForm>("Form", formSchema);

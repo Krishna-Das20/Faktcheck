@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useContestTimer } from "@/context/ContestTimerContext";
 import toast from "react-hot-toast";
 import { ClipboardList, CheckCircle, Send, ArrowLeft, ArrowRight, Clock, Loader } from "lucide-react";
+import ImageUpload from "@/components/ui/ImageUpload";
 
 export default function ContestFormsPage() {
   const { contestId } = useParams<{ contestId: string }>();
@@ -106,18 +107,33 @@ export default function ContestFormsPage() {
 
     const formResponses = responses[formId] || {};
     for (const field of form.fields) {
-      if (field.required && !formResponses[field.fieldId]) {
-        toast.error(`Please fill in: ${field.label}`);
-        return;
+      if (field.required) {
+        const val = formResponses[field.fieldId];
+        const isEmpty = field.type === "FILE"
+          ? !val?.fileUrl
+          : !val;
+        if (isEmpty) {
+          toast.error(`Please fill in: ${field.label}`);
+          return;
+        }
       }
     }
 
     setSubmitting(true);
     try {
-      const responseArray = form.fields.map((field: any) => ({
-        fieldId: field.fieldId,
-        value: formResponses[field.fieldId] || null,
-      }));
+      const responseArray = form.fields.map((field: any) => {
+        const val = formResponses[field.fieldId];
+        const resp: any = {
+          fieldId: field.fieldId,
+          value: val?.value !== undefined ? val.value : val || null,
+        };
+        // Include file data for FILE fields
+        if (field.type === "FILE" && val?.fileUrl) {
+          resp.fileUrl = val.fileUrl;
+          resp.filePublicId = val.filePublicId || null;
+        }
+        return resp;
+      });
 
       const res = await fetch("/api/form-submissions", {
         method: "POST",
@@ -328,6 +344,16 @@ export default function ContestFormsPage() {
                         )}
                       </label>
 
+                      {/* Description Image */}
+                      {field.descriptionImage && (
+                        <img
+                          src={field.descriptionImage}
+                          alt=""
+                          className="rounded-lg max-h-48 object-contain mb-2"
+                          style={{ border: "1px solid var(--border)" }}
+                        />
+                      )}
+
                       {field.type === "TEXT" && (
                         <input
                           type="text"
@@ -436,6 +462,32 @@ export default function ContestFormsPage() {
                               </label>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {field.type === "FILE" && (
+                        <div className="space-y-2">
+                          <ImageUpload
+                            value={responses[currentForm._id]?.[field.fieldId]?.fileUrl || null}
+                            onChange={(data) => {
+                              if (data) {
+                                updateResponse(currentForm._id, field.fieldId, {
+                                  value: data.fileName || 'Uploaded file',
+                                  fileUrl: data.url,
+                                  filePublicId: data.publicId,
+                                });
+                              } else {
+                                updateResponse(currentForm._id, field.fieldId, null);
+                              }
+                            }}
+                            type="file"
+                            label={`Upload File${field.maxFileSize ? ` (max ${field.maxFileSize}MB)` : ' (max 5MB)'}`}
+                          />
+                          {field.allowedFileTypes?.length > 0 && !field.allowedFileTypes?.includes("*") && (
+                            <p className="text-xs" style={{ color: "var(--foreground-muted)" }}>
+                              Allowed: {field.allowedFileTypes.join(", ")}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

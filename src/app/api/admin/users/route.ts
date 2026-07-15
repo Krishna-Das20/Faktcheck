@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
       .select("-password -resetPasswordToken -resetPasswordExpires")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const total = await User.countDocuments(query);
 

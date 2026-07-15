@@ -4,6 +4,14 @@ import User from "@/lib/models/User";
 import { getAuthUser } from "@/lib/api-auth";
 import { addConnection } from "@/lib/sseManager";
 
+// Never cache; hold the stream open as long as the platform allows.
+// On serverless hosts the function is recycled at maxDuration — the browser's
+// EventSource then auto-reconnects and receives a fresh `role-sync`, so
+// real-time push gracefully degrades to periodic sync. On a persistent Node
+// server (next start) the connection simply stays open.
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 // GET /api/auth/sse — SSE endpoint for real-time role/user updates
 // Token passed via query param since EventSource can't set headers
 export async function GET(request: NextRequest) {

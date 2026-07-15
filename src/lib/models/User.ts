@@ -35,7 +35,7 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/,
         "Please provide a valid email",
       ],
     },
@@ -43,6 +43,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: [true, "Password is required"],
       minlength: 6,
+      select: false,
     },
     role: {
       type: String,

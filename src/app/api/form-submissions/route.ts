@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
         maxMarks: field.marks,
         isEvaluated: field.isAutoScored,
         feedback: "",
+        fileUrl: userResp?.fileUrl || null,
+        filePublicId: userResp?.filePublicId || null,
       };
     });
 

@@ -41,11 +41,12 @@ export async function GET(request: NextRequest) {
     const rooms = await Room.find(filter)
       .sort({ createdAt: -1 })
       .populate("owner", "name email avatar")
-      .populate("coOrganisers", "name email avatar");
+      .populate("coOrganisers", "name email avatar")
+      .lean();
 
     // Add counts
     const roomsWithCounts = rooms.map((room) => ({
-      ...room.toObject(),
+      ...room,
       memberCount: 1 + (room.coOrganisers?.length || 0) + (room.participants?.length || 0),
       participantCount: room.participants?.length || 0,
       coOrganiserCount: room.coOrganisers?.length || 0,

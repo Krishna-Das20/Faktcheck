@@ -1,5 +1,10 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface IMCQImage {
+  url: string;
+  publicId: string;
+}
+
 export interface IMCQOption {
   text: string;
   isCorrect: boolean;
@@ -21,6 +26,7 @@ export interface IMCQ extends Document {
   explanation: string | null;
   imageUrl: string | null;
   imagePublicId: string | null;
+  images: IMCQImage[];
   order: number;
   metrics: {
     attempted: number;
@@ -74,6 +80,12 @@ const mcqSchema = new Schema<IMCQ>(
     explanation: { type: String, default: null },
     imageUrl: { type: String, default: null },
     imagePublicId: { type: String, default: null },
+    images: [
+      {
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+      },
+    ],
     order: { type: Number, default: 0 },
     metrics: {
       attempted: { type: Number, default: 0 },

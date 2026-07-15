@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
+import { requireAuth } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
 
-const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const ALLOWED_FILE_TYPES = [
   ...ALLOWED_IMAGE_TYPES,
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const limited = await rateLimit(request, RATE_LIMIT_PRESETS.API_UPLOAD);
     if (limited) return limited;
 
-    await requireAdmin(request);
+    await requireAuth(request);
 
     if (!isCloudinaryConfigured()) {
       return errorResponse("Image upload is not configured. Set up Cloudinary credentials.", 503);
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Validate size
     if (file.size > maxSize) {
-      return errorResponse("File too large. Max size is 1MB.", 400);
+      return errorResponse("File too large. Max size is 5MB.", 400);
     }
 
     // Validate type

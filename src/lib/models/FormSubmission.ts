@@ -11,6 +11,8 @@ export interface IFormResponse {
   maxMarks: number;
   isEvaluated: boolean;
   feedback: string;
+  fileUrl: string | null;
+  filePublicId: string | null;
 }
 
 export interface IFormSubmission extends Document {
@@ -42,6 +44,8 @@ const responseSchema = new Schema(
     maxMarks: { type: Number, default: 0 },
     isEvaluated: { type: Boolean, default: false },
     feedback: { type: String, default: "" },
+    fileUrl: { type: String, default: null },
+    filePublicId: { type: String, default: null },
   },
   { _id: false }
 );

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Save, ArrowLeft, Type, AlignLeft, CircleDot, CheckSquare, Hash, Link2, Calendar, Eye } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, Type, AlignLeft, CircleDot, CheckSquare, Hash, Link2, Calendar, Eye, Upload } from "lucide-react";
+import ImageUpload from "@/components/ui/ImageUpload";
 
 const inputStyle = { background: "var(--background-secondary)", color: "var(--foreground)", border: "1px solid var(--border)" };
 
@@ -16,12 +17,29 @@ const FIELD_TYPES = [
   { value: "NUMBER", label: "Number", icon: Hash },
   { value: "URL", label: "URL", icon: Link2 },
   { value: "DATE", label: "Date", icon: Calendar },
+  { value: "FILE", label: "File Upload", icon: Upload },
 ];
 
 interface FormField {
   fieldId: string; type: string; label: string; required: boolean; placeholder: string;
   options: string[]; correctAnswers: string[]; isAutoScored: boolean; marks: number; order: number;
+  descriptionImage: string | null;
+  allowedFileTypes: string[];
+  maxFileSize: number;
 }
+
+const FILE_TYPE_OPTIONS = [
+  { value: "image/*", label: "Images (JPG, PNG, GIF, WebP)" },
+  { value: "application/pdf", label: "PDF Documents" },
+  { value: ".doc,.docx", label: "Word Documents" },
+  { value: ".xls,.xlsx", label: "Excel Spreadsheets" },
+  { value: ".ppt,.pptx", label: "PowerPoint Presentations" },
+  { value: ".zip,.rar", label: "Archives (ZIP, RAR)" },
+  { value: "video/*", label: "Videos" },
+  { value: "audio/*", label: "Audio Files" },
+  { value: ".txt,.csv", label: "Text/CSV Files" },
+  { value: "*", label: "Any File Type" },
+];
 
 export default function FormBuilderPage() {
   const params = useParams<{ contestId: string; formId?: string }>();
@@ -52,6 +70,9 @@ export default function FormBuilderPage() {
       fieldId: crypto.randomUUID(), type, label: `New ${ft.label} Field`, required: false, placeholder: "",
       options: type === "RADIO" || type === "CHECKBOX" ? ["Option 1", "Option 2"] : [],
       correctAnswers: [], isAutoScored: false, marks: 0, order: formData.fields.length,
+      descriptionImage: null,
+      allowedFileTypes: type === "FILE" ? ["*"] : [],
+      maxFileSize: 5,
     };
     setFormData((p) => ({ ...p, fields: [...p.fields, field] }));
     setShowAddField(false);
@@ -131,6 +152,9 @@ export default function FormBuilderPage() {
                   {field.label} {field.required && <span style={{ color: "#EF4444" }}>*</span>}
                   <span className="text-sm ml-2" style={{ color: "var(--foreground-secondary)" }}>({field.marks} marks)</span>
                 </label>
+                {field.descriptionImage && (
+                  <img src={field.descriptionImage} alt="" className="rounded-lg mb-2 max-h-40 object-contain" />
+                )}
                 {["TEXT", "NUMBER", "URL"].includes(field.type) && <input type={field.type.toLowerCase()} placeholder={field.placeholder} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} disabled />}
                 {field.type === "TEXTAREA" && <textarea placeholder={field.placeholder} className="w-full px-3 py-2 rounded-lg text-sm resize-none" style={inputStyle} rows={3} disabled />}
                 {field.type === "DATE" && <input type="date" className="px-3 py-2 rounded-lg text-sm" style={inputStyle} disabled />}
@@ -138,6 +162,14 @@ export default function FormBuilderPage() {
                   <div className="space-y-2">{field.options.map((opt, i) => (
                     <label key={i} className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-secondary)" }}><input type={field.type.toLowerCase()} disabled /> {opt}</label>
                   ))}</div>
+                )}
+                {field.type === "FILE" && (
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ borderColor: "var(--border)", color: "var(--foreground-secondary)" }}>
+                    📎 File upload area (max {field.maxFileSize || 5}MB)
+                    {field.allowedFileTypes?.length > 0 && !field.allowedFileTypes.includes("*") && (
+                      <p className="text-xs mt-1">Allowed: {field.allowedFileTypes.map((t) => FILE_TYPE_OPTIONS.find((ft) => ft.value === t)?.label || t).join(", ")}</p>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
@@ -159,6 +191,14 @@ export default function FormBuilderPage() {
                       <TypeIcon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--primary)" }} />
                       <input type="text" value={field.label} onChange={(e) => updateField(field.fieldId, { label: e.target.value })} className="flex-1 min-w-0 bg-transparent font-medium outline-none" style={{ color: "var(--foreground)", borderBottom: "1px solid var(--border)" }} />
                       <button onClick={() => removeField(field.fieldId)} className="p-2 flex-shrink-0"><Trash2 className="w-4 h-4" style={{ color: "#EF4444" }} /></button>
+                    </div>
+                    <div className="mb-3">
+                      <ImageUpload
+                        value={field.descriptionImage || null}
+                        onChange={(data) => updateField(field.fieldId, { descriptionImage: data?.url || null })}
+                        label="Description Image (optional)"
+                        compact
+                      />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                       <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-secondary)" }}>
@@ -194,6 +234,48 @@ export default function FormBuilderPage() {
                         ))}
                         <button onClick={() => updateField(field.fieldId, { options: [...field.options, `Option ${field.options.length + 1}`] })} className="text-sm" style={{ color: "var(--primary)" }}>+ Add Option</button>
                         {field.isAutoScored && <p className="text-xs mt-1" style={{ color: "#22C55E" }}>✓ Correct: {field.correctAnswers.join(", ") || "None"}</p>}
+                      </div>
+                    )}
+                    {field.type === "FILE" && (
+                      <div className="space-y-3 p-4 rounded-lg" style={{ background: "var(--background-secondary)", border: "1px solid var(--border)" }}>
+                        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>📎 File Upload Settings</p>
+                        <div>
+                          <label className="text-xs block mb-1" style={{ color: "var(--foreground-secondary)" }}>Allowed File Types</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {FILE_TYPE_OPTIONS.map((ft) => (
+                              <label key={ft.value} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--foreground-secondary)" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={field.allowedFileTypes?.includes(ft.value) || false}
+                                  onChange={(e) => {
+                                    let updated: string[];
+                                    if (ft.value === "*") {
+                                      updated = e.target.checked ? ["*"] : [];
+                                    } else {
+                                      const without = (field.allowedFileTypes || []).filter((t) => t !== "*" && t !== ft.value);
+                                      updated = e.target.checked ? [...without, ft.value] : without;
+                                    }
+                                    updateField(field.fieldId, { allowedFileTypes: updated });
+                                  }}
+                                  className="w-4 h-4"
+                                />
+                                {ft.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs" style={{ color: "var(--foreground-secondary)" }}>Max File Size (MB):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={field.maxFileSize || 5}
+                            onChange={(e) => updateField(field.fieldId, { maxFileSize: Number(e.target.value) })}
+                            className="w-20 px-2 py-1 rounded text-sm"
+                            style={inputStyle}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>

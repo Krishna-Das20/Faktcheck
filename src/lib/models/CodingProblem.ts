@@ -13,6 +13,11 @@ export interface IExample {
   explanation?: string;
 }
 
+export interface ICodingImage {
+  url: string;
+  publicId: string;
+}
+
 export interface ICodingProblem extends Document {
   contestId: mongoose.Types.ObjectId | null;
   isLibrary: boolean;
@@ -33,6 +38,7 @@ export interface ICodingProblem extends Document {
   tags: string[];
   imageUrl: string | null;
   imagePublicId: string | null;
+  images: ICodingImage[];
   order: number;
   metrics: {
     attempted: number;
@@ -105,6 +111,12 @@ const codingProblemSchema = new Schema<ICodingProblem>(
     tags: [{ type: String }],
     imageUrl: { type: String, default: null },
     imagePublicId: { type: String, default: null },
+    images: [
+      {
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+      },
+    ],
     order: { type: Number, default: 0 },
     metrics: {
       attempted: { type: Number, default: 0 },

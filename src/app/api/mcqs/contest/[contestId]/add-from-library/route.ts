@@ -5,6 +5,7 @@ import ContestMCQ from "@/lib/models/ContestMCQ";
 import { requireAdminOrOrganiser } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { rateLimit, RATE_LIMIT_PRESETS } from "@/lib/rate-limit";
+import { requireContestOwner } from "@/lib/contest-access";
 
 // POST /api/mcqs/contest/[contestId]/add-from-library — add library MCQs to a contest
 export async function POST(
@@ -18,6 +19,9 @@ export async function POST(
     const user = await requireAdminOrOrganiser(request);
     const { contestId } = await params;
     await connectDB();
+
+    // Only the contest owner (or a room co-organiser / admin) may add MCQs
+    const contest = await requireContestOwner(user, contestId);
 
     const { mcqIds } = await request.json();
     if (!mcqIds || !Array.isArray(mcqIds) || mcqIds.length === 0) {
@@ -51,6 +55,14 @@ export async function POST(
       added.push(link);
     }
 
+    // Keep the contest's MCQ totalMarks in sync
+    if (added.length > 0) {
+      const addedMarks = added.reduce((sum, link) => sum + (link.marks || 0), 0);
+      contest.sections.mcq.totalMarks =
+        (contest.sections.mcq.totalMarks || 0) + addedMarks;
+      await contest.save();
+    }
+
     return successResponse({
       message: `${added.length} MCQ(s) added to contest`,
       added,
@@ -58,6 +70,9 @@ export async function POST(
   } catch (error: any) {
     if (error.message === "NOT_AUTHENTICATED") return errorResponse("Not authorized", 401);
     if (error.message === "NOT_AUTHORIZED") return errorResponse("Insufficient permissions", 403);
+    if (error.message === "CONTEST_NOT_FOUND") return errorResponse("Contest not found", 404);
+    if (error.message === "CONTEST_FORBIDDEN")
+      return errorResponse("You can only add MCQs to your own contests", 403);
     console.error("Add library MCQs error:", error);
     return errorResponse("Server error", 500);
   }

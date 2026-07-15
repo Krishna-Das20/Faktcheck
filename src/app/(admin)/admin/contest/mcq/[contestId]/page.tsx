@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { FileQuestion, ArrowLeft, Plus, Trash2, Save, Edit, X, CheckCircle, Library, Search } from "lucide-react";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MultiImageUpload from "@/components/ui/MultiImageUpload";
 
 const inputStyle = { background: "var(--background-secondary)", color: "var(--foreground)", border: "1px solid var(--border)" };
 
@@ -34,6 +35,7 @@ export default function ManageMCQPage() {
     question: "", options: [{ text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }, { text: "", isCorrect: false, imageUrl: null as string | null }],
     marks: 1, negativeMarks: 0, category: "", difficulty: "MEDIUM", explanation: "",
     imageUrl: null as string | null, imagePublicId: null as string | null,
+    images: [] as {url: string; publicId: string}[],
   };
   const [form, setForm] = useState<any>(defaultForm);
 
@@ -97,7 +99,7 @@ export default function ManageMCQPage() {
       const method = editingId ? "PUT" : "POST";
       const body = {
         ...form, contestId,
-        imageUrl: form.imageUrl, imagePublicId: form.imagePublicId,
+        images: form.images || [],
         ...(!editingId && saveToLibrary ? { saveToLibrary: true, libraryIsPublic: isAdmin ? libraryIsPublic : false } : {}),
       };
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -111,16 +113,27 @@ export default function ManageMCQPage() {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this MCQ?")) return;
+  const handleDelete = async (mcq: any) => {
+    const isLibraryLinked = !!mcq.contestMCQId;
+    const msg = isLibraryLinked
+      ? "Remove this library question from the contest? (It will stay in the library)"
+      : "Delete this MCQ permanently?";
+    if (!confirm(msg)) return;
     try {
-      await fetch(`/api/mcqs/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      toast.success("Deleted"); fetchMCQs();
+      if (isLibraryLinked) {
+        // Unlink from contest only — never hard-delete a shared library question
+        await fetch(`/api/mcqs/contest/${contestId}/remove/${mcq._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+        toast.success("Question removed from contest");
+      } else {
+        await fetch(`/api/mcqs/${mcq._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+        toast.success("Deleted");
+      }
+      fetchMCQs();
     } catch { toast.error("Failed to delete"); }
   };
 
   const startEdit = (mcq: any) => {
-    setForm({ question: mcq.question, options: mcq.options, marks: mcq.marks, negativeMarks: mcq.negativeMarks || 0, category: mcq.category || "", difficulty: mcq.difficulty || "MEDIUM", explanation: mcq.explanation || "", imageUrl: mcq.imageUrl || null, imagePublicId: mcq.imagePublicId || null });
+    setForm({ question: mcq.question, options: mcq.options, marks: mcq.marks, negativeMarks: mcq.negativeMarks || 0, category: mcq.category || "", difficulty: mcq.difficulty || "MEDIUM", explanation: mcq.explanation || "", imageUrl: mcq.imageUrl || null, imagePublicId: mcq.imagePublicId || null, images: mcq.images || (mcq.imageUrl ? [{ url: mcq.imageUrl, publicId: mcq.imagePublicId || '' }] : []) });
     setEditingId(mcq._id);
     setShowForm(true);
     setSaveToLibrary(false);
@@ -158,10 +171,10 @@ export default function ManageMCQPage() {
             </div>
             <textarea value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} rows={3} className="w-full px-3 py-2.5 rounded-lg resize-none text-sm" style={inputStyle} placeholder="Enter question..." />
 
-            <ImageUpload
-              value={form.imageUrl}
-              onChange={(data) => setForm({ ...form, imageUrl: data?.url || null, imagePublicId: data?.publicId || null })}
-              label="Question Image (optional)"
+            <MultiImageUpload
+              images={form.images || []}
+              onChange={(imgs) => setForm({ ...form, images: imgs })}
+              label="Question Images (optional)"
             />
             
             <div className="space-y-3">
@@ -277,7 +290,13 @@ export default function ManageMCQPage() {
                     )}
                   </div>
                   <p className="text-sm mb-2" style={{ color: "var(--foreground)" }}>{typeof mcq.question === "object" ? mcq.question.text : mcq.question}</p>
-                  {mcq.imageUrl && <img src={mcq.imageUrl} alt="Question" className="rounded-lg max-h-32 mb-2 object-contain" />}
+                  {(mcq.images?.length > 0 || mcq.imageUrl) && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {(mcq.images?.length > 0 ? mcq.images : mcq.imageUrl ? [{ url: mcq.imageUrl }] : []).map((img: any, idx: number) => (
+                        <img key={idx} src={img.url} alt={`Question ${idx + 1}`} className="rounded-lg max-h-32 object-contain" />
+                      ))}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-1">
                     {mcq.options?.map((opt: any, j: number) => (
                       <div key={j} className="flex flex-col gap-1 text-xs px-2 py-1 rounded" style={{ color: opt.isCorrect ? "#22C55E" : "var(--foreground-secondary)", background: opt.isCorrect ? "rgba(34,197,94,0.1)" : "transparent" }}>
@@ -291,7 +310,7 @@ export default function ManageMCQPage() {
                 </div>
                 <div className="flex gap-1 ml-2">
                   <button onClick={() => startEdit(mcq)} className="p-2 rounded-lg hover:opacity-80"><Edit className="w-4 h-4" style={{ color: "#EAB308" }} /></button>
-                  <button onClick={() => handleDelete(mcq._id)} className="p-2 rounded-lg hover:opacity-80"><Trash2 className="w-4 h-4" style={{ color: "#EF4444" }} /></button>
+                  <button onClick={() => handleDelete(mcq)} className="p-2 rounded-lg hover:opacity-80"><Trash2 className="w-4 h-4" style={{ color: "#EF4444" }} /></button>
                 </div>
               </div>
             </div>
