@@ -16,3 +16,5 @@ export { default as Form } from "./Form";
 export { default as FormSubmission } from "./FormSubmission";
 export { default as Room } from "./Room";
 export { default as Announcement } from "./Announcement";
+export { default as ProctorFlag } from "./ProctorFlag";
+export { default as RateLimit } from "./RateLimit";

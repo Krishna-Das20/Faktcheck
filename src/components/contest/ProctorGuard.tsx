@@ -12,22 +12,34 @@ interface ProctorGuardProps {
   children: ReactNode;
 }
 
-type ViolationType =
+// Browser-tier flag types raised by this component. The server accepts the
+// full ProctorFlag superset (video/audio/screen come from ProctorMedia).
+type FlagType =
   | "TAB_SWITCH"
   | "FULLSCREEN_EXIT"
   | "WINDOW_BLUR"
   | "COPY_ATTEMPT"
   | "PASTE_ATTEMPT"
-  | "SCREENSHOT_ATTEMPT";
+  | "SCREENSHOT_ATTEMPT"
+  | "MULTIPLE_MONITORS"
+  | "EXTENDED_DISPLAY";
 
-const VIOLATION_LABELS: Record<ViolationType, string> = {
+const FLAG_LABELS: Record<FlagType, string> = {
   TAB_SWITCH: "Tab Switch Detected",
   FULLSCREEN_EXIT: "Fullscreen Exit Detected",
   WINDOW_BLUR: "Window Focus Lost",
   COPY_ATTEMPT: "Copy Attempt Blocked",
   PASTE_ATTEMPT: "Paste Attempt Blocked",
   SCREENSHOT_ATTEMPT: "Screenshot Attempt Blocked",
+  MULTIPLE_MONITORS: "Multiple Monitors Detected",
+  EXTENDED_DISPLAY: "Extended Display Detected",
 };
+
+interface FlagPayload {
+  type: FlagType;
+  details?: string | null;
+  confidence?: number;
+}
 
 export default function ProctorGuard({
   contestId,
@@ -36,37 +48,41 @@ export default function ProctorGuard({
   children,
 }: ProctorGuardProps) {
   const { token } = useAuth();
-  const [warningCount, setWarningCount] = useState(0);
+  const [alertCount, setAlertCount] = useState(0);
+  const [riskScore, setRiskScore] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
-  const [violationType, setViolationType] = useState<ViolationType | "">("");
+  const [flagType, setFlagType] = useState<FlagType | "">("");
+  const [terminated, setTerminated] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const maxWarnings = 3;
+
   const isProcessingRef = useRef(false);
   const hasAutoSubmittedRef = useRef(false);
-  const warningCountRef = useRef(0);
+  // De-dupe passive checks (multi-monitor) so we don't spam the same flag
+  const raisedOnceRef = useRef<Set<FlagType>>(new Set());
 
-  // Load persisted warning count from DB on mount (universal across sections)
+  // Load persisted risk from DB on mount (universal across sections)
   useEffect(() => {
     if (!token || !enabled) return;
-    const loadWarnings = async () => {
+    const loadState = async () => {
       try {
         const res = await fetch(`/api/contests/${contestId}/start`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         if (data.success && data.progress) {
-          const dbWarnings = data.progress.warningCount || 0;
-          warningCountRef.current = dbWarnings;
-          setWarningCount(dbWarnings);
-          if (dbWarnings >= maxWarnings) {
+          setRiskScore(data.progress.riskScore || 0);
+          if (
+            data.progress.status === "SUBMITTED" ||
+            data.progress.terminationReason === "MALPRACTICE"
+          ) {
             hasAutoSubmittedRef.current = true;
           }
         }
       } catch {
-        console.error("Failed to load warning count");
+        console.error("Failed to load proctoring state");
       }
     };
-    loadWarnings();
+    loadState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contestId, token, enabled]);
 
@@ -87,69 +103,87 @@ export default function ProctorGuard({
     }
   }, []);
 
-  // Log violation — INSTANT warning, async API call
-  const logViolation = useCallback(
-    async (type: ViolationType, details: string | null = null) => {
-      if (isProcessingRef.current || hasAutoSubmittedRef.current) return;
+  // Raise a proctoring flag — instant local feedback, server decides policy
+  const raiseFlag = useCallback(
+    async (payload: FlagPayload) => {
+      if (isProcessingRef.current || hasAutoSubmittedRef.current || !enabled) return;
       isProcessingRef.current = true;
 
-      // Use ref for accurate count (avoids stale closure on rapid events)
-      const newWarningCount = warningCountRef.current + 1;
-      warningCountRef.current = newWarningCount;
-      setWarningCount(newWarningCount);
-      setViolationType(type);
+      setAlertCount((c) => c + 1);
+      setFlagType(payload.type);
       setShowWarning(true);
 
-      // Check if max warnings reached
-      if (newWarningCount >= maxWarnings) {
-        hasAutoSubmittedRef.current = true;
-        toast.error("Contest terminated due to malpractice!", {
-          duration: 5000,
-          icon: "🚫",
-        });
-        if (onAutoSubmit) {
-          onAutoSubmit("MALPRACTICE");
-        }
-      }
-
-      // Log to API in background (non-blocking)
       try {
-        await fetch(`/api/contests/${contestId}/violation`, {
+        const res = await fetch(`/api/proctor/${contestId}/flag`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ type, details }),
+          body: JSON.stringify({
+            type: payload.type,
+            details: payload.details ?? null,
+            confidence: payload.confidence ?? 1,
+          }),
         });
+        const data = await res.json();
+
+        if (data.success) {
+          setRiskScore(data.riskScore ?? 0);
+          if (data.terminated) {
+            hasAutoSubmittedRef.current = true;
+            setTerminated(true);
+            toast.error("Contest terminated due to proctoring violations!", {
+              duration: 5000,
+              icon: "🚫",
+            });
+            onAutoSubmit?.("MALPRACTICE");
+          } else if (!data.warn) {
+            // Below the warn threshold — auto-dismiss the transient notice
+            setTimeout(() => setShowWarning(false), 1500);
+          }
+        }
       } catch (error) {
-        console.error("Failed to log violation:", error);
+        console.error("Failed to record proctoring flag:", error);
       } finally {
         isProcessingRef.current = false;
       }
     },
-    [contestId, onAutoSubmit, token]
+    [contestId, enabled, onAutoSubmit, token]
   );
 
-  // Handle visibility change (tab switch)
+  // ── Multi-monitor / extended-display detection (passive, no prompt) ──
+  const checkDisplays = useCallback(() => {
+    if (!enabled || hasAutoSubmittedRef.current) return;
+    // screen.isExtended is a passive read (Chromium); getScreenDetails needs a
+    // permission prompt and is done in the pre-exam system check instead.
+    const isExtended = (window.screen as any)?.isExtended;
+    if (isExtended && !raisedOnceRef.current.has("EXTENDED_DISPLAY")) {
+      raisedOnceRef.current.add("EXTENDED_DISPLAY");
+      raiseFlag({
+        type: "EXTENDED_DISPLAY",
+        details: "An extended/second display was detected",
+      });
+    }
+  }, [enabled, raiseFlag]);
+
+  // Handlers ---------------------------------------------------------------
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden && enabled && !hasAutoSubmittedRef.current) {
-      logViolation("TAB_SWITCH", "User switched to another tab");
+      raiseFlag({ type: "TAB_SWITCH", details: "User switched to another tab" });
     }
-  }, [enabled, logViolation]);
+  }, [enabled, raiseFlag]);
 
-  // Handle window blur (clicking outside) — minimal delay to filter double-events
   const handleBlur = useCallback(() => {
     if (enabled && !hasAutoSubmittedRef.current) {
       setTimeout(() => {
         if (!document.hasFocus()) {
-          logViolation("WINDOW_BLUR", "Window lost focus");
+          raiseFlag({ type: "WINDOW_BLUR", details: "Window lost focus" });
         }
       }, 20);
     }
-  }, [enabled, logViolation]);
+  }, [enabled, raiseFlag]);
 
-  // Handle fullscreen change
   const handleFullscreenChange = useCallback(() => {
     const doc = document as any;
     const isNowFullscreen = !!(
@@ -157,20 +191,16 @@ export default function ProctorGuard({
       doc.webkitFullscreenElement ||
       doc.msFullscreenElement
     );
-
     setIsFullscreen(isNowFullscreen);
-
     if (!isNowFullscreen && enabled && !hasAutoSubmittedRef.current) {
-      logViolation("FULLSCREEN_EXIT", "User exited fullscreen mode");
+      raiseFlag({ type: "FULLSCREEN_EXIT", details: "User exited fullscreen mode" });
     }
-  }, [enabled, logViolation]);
+  }, [enabled, raiseFlag]);
 
-  // Handle keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return;
 
-      // Win+Shift+S (Snipping Tool)
       if (
         e.key.toLowerCase() === "s" &&
         e.shiftKey &&
@@ -178,36 +208,22 @@ export default function ProctorGuard({
       ) {
         e.preventDefault();
         e.stopPropagation();
-        logViolation(
-          "SCREENSHOT_ATTEMPT",
-          "User attempted Windows+Shift+S snipping tool"
-        );
+        raiseFlag({ type: "SCREENSHOT_ATTEMPT", details: "Windows+Shift+S snipping tool" });
         return;
       }
-
-      // PrintScreen
       if (e.key === "PrintScreen") {
         e.preventDefault();
         e.stopPropagation();
-        logViolation(
-          "SCREENSHOT_ATTEMPT",
-          "User attempted PrintScreen screenshot"
-        );
+        raiseFlag({ type: "SCREENSHOT_ATTEMPT", details: "PrintScreen key" });
         return;
       }
-
-      // Ctrl+Shift+S
       if (e.key.toLowerCase() === "s" && e.ctrlKey && e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
-        logViolation(
-          "SCREENSHOT_ATTEMPT",
-          "User attempted Ctrl+Shift+S screenshot"
-        );
+        raiseFlag({ type: "SCREENSHOT_ATTEMPT", details: "Ctrl+Shift+S screenshot" });
         return;
       }
 
-      // Block common navigation shortcuts
       const blockedCombinations = [
         { key: "Escape" },
         { key: "F11" },
@@ -236,12 +252,12 @@ export default function ProctorGuard({
         e.stopPropagation();
       }
     },
-    [enabled, logViolation]
+    [enabled, raiseFlag]
   );
 
-  // Handle copy/paste attempts - allow only in code editor (matches KK behavior)
+  // Copy/paste — allowed inside the code editor; paste content is logged
   const handleCopyPaste = useCallback(
-    (e: ClipboardEvent, type: ViolationType) => {
+    (e: ClipboardEvent, type: "COPY_ATTEMPT" | "PASTE_ATTEMPT") => {
       if (!enabled) return;
 
       const target = e.target as HTMLElement;
@@ -254,25 +270,34 @@ export default function ProctorGuard({
       if (isInCodeEditor) return; // Allow copy/paste in code editor
 
       e.preventDefault();
-      logViolation(type, `User attempted to ${type.toLowerCase().replace("_", " ")}`);
+
+      // Log the pasted text (truncated) — catches ChatGPT copy-ins
+      let details: string | null =
+        type === "COPY_ATTEMPT" ? "User attempted to copy" : "User attempted to paste";
+      if (type === "PASTE_ATTEMPT") {
+        const pasted = e.clipboardData?.getData("text") || "";
+        if (pasted) {
+          const snippet = pasted.slice(0, 300).replace(/\s+/g, " ").trim();
+          details = `Pasted text: "${snippet}${pasted.length > 300 ? "…" : ""}"`;
+        }
+      }
+      raiseFlag({ type, details });
     },
-    [enabled, logViolation]
+    [enabled, raiseFlag]
   );
 
   // Set up event listeners
   useEffect(() => {
     if (!enabled) return;
 
-    // Enter fullscreen on mount
     enterFullscreen();
+    checkDisplays();
+    const displayInterval = setInterval(checkDisplays, 10000);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener(
-      "webkitfullscreenchange",
-      handleFullscreenChange
-    );
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
     document.addEventListener("keydown", handleKeyDown);
 
     const handleCopy = (e: Event) => handleCopyPaste(e as ClipboardEvent, "COPY_ATTEMPT");
@@ -295,19 +320,11 @@ export default function ProctorGuard({
     document.addEventListener("contextmenu", handleContextMenu);
 
     return () => {
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
+      clearInterval(displayInterval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
-      document.removeEventListener(
-        "fullscreenchange",
-        handleFullscreenChange
-      );
-      document.removeEventListener(
-        "webkitfullscreenchange",
-        handleFullscreenChange
-      );
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("paste", handlePaste);
@@ -317,6 +334,7 @@ export default function ProctorGuard({
   }, [
     enabled,
     enterFullscreen,
+    checkDisplays,
     handleVisibilityChange,
     handleBlur,
     handleFullscreenChange,
@@ -324,12 +342,9 @@ export default function ProctorGuard({
     handleCopyPaste,
   ]);
 
-  // Dismiss warning and re-enter fullscreen
   const handleDismissWarning = () => {
     setShowWarning(false);
-    if (warningCount < maxWarnings) {
-      enterFullscreen();
-    }
+    if (!terminated) enterFullscreen();
   };
 
   if (!enabled) {
@@ -367,11 +382,12 @@ export default function ProctorGuard({
             )}
             <span
               style={{
-                color: warningCount > 0 ? "#EF4444" : "var(--foreground-secondary)",
+                color: alertCount > 0 ? "#EF4444" : "var(--foreground-secondary)",
               }}
               aria-live="polite"
+              title={`Risk score: ${riskScore}`}
             >
-              Warnings: {warningCount}/{maxWarnings}
+              Alerts: {alertCount}
             </span>
           </div>
         </div>
@@ -408,32 +424,28 @@ export default function ProctorGuard({
               className="text-2xl font-bold mb-2"
               style={{ color: "#EF4444" }}
             >
-              Warning {warningCount}/{maxWarnings}
+              {terminated ? "Contest Terminated" : "Proctoring Alert"}
             </h2>
 
             <p
               className="text-xl font-semibold mb-2"
               style={{ color: "var(--foreground)" }}
             >
-              {violationType ? VIOLATION_LABELS[violationType as ViolationType] : "Violation Detected"}
+              {flagType ? FLAG_LABELS[flagType as FlagType] : "Violation Detected"}
             </p>
 
-            <p
-              className="mb-6"
-              style={{ color: "var(--foreground-secondary)" }}
-            >
-              {warningCount >= maxWarnings
-                ? "Maximum warnings reached. Your contest has been auto-submitted due to malpractice."
-                : "Please return to the exam. Do not switch tabs, exit fullscreen, or click outside the exam window."}
+            <p className="mb-6" style={{ color: "var(--foreground-secondary)" }}>
+              {terminated
+                ? "Your contest has been auto-submitted due to repeated proctoring violations."
+                : "Please stay on the exam window. Do not switch tabs, exit fullscreen, use a second screen, or click away. Repeated violations will end your attempt."}
             </p>
 
-            {warningCount < maxWarnings ? (
+            {!terminated ? (
               <button
                 onClick={handleDismissWarning}
                 className="w-full py-3 rounded-xl text-white font-semibold inline-flex items-center justify-center gap-2 transition-colors"
                 style={{
-                  background:
-                    "linear-gradient(135deg, var(--primary), #FF8C5A)",
+                  background: "linear-gradient(135deg, var(--primary), #FF8C5A)",
                 }}
               >
                 <Maximize className="w-5 h-5" />

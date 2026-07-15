@@ -83,4 +83,30 @@ export async function deleteFromCloudinary(
   }
 }
 
+/**
+ * Produce a signed, time-limited delivery URL for a private proctoring asset.
+ * Evidence (webcam snapshots, identity photos, clips) is uploaded as
+ * `type: "authenticated"` so it is never publicly reachable — only reviewers
+ * with a short-lived signed URL can view it.
+ *
+ * Returns null if Cloudinary isn't configured or no key is given.
+ */
+export function getSignedEvidenceUrl(
+  publicId: string | null | undefined,
+  options: { resourceType?: "image" | "video" | "raw"; expiresInSeconds?: number } = {}
+): string | null {
+  if (!publicId || !isCloudinaryConfigured()) return null;
+  ensureConfigured();
+
+  const expiresAt = Math.floor(Date.now() / 1000) + (options.expiresInSeconds ?? 900);
+
+  return cloudinary.url(publicId, {
+    resource_type: options.resourceType ?? "image",
+    type: "authenticated",
+    sign_url: true,
+    secure: true,
+    expires_at: expiresAt,
+  });
+}
+
 export default cloudinary;

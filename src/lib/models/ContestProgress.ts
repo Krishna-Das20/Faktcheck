@@ -57,6 +57,13 @@ export interface IContestProgress extends Document {
   warningCount: number;
   terminationReason: "COMPLETED" | "TIMEOUT" | "MALPRACTICE" | null;
   proctorEnabled: boolean;
+  riskScore: number;
+  mediaProctoring: {
+    consentGivenAt?: Date;
+    identityPhotoKey?: string | null;
+    cameraActive: boolean;
+    lastSnapshotAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -154,6 +161,18 @@ const contestProgressSchema = new Schema<IContestProgress>(
     proctorEnabled: {
       type: Boolean,
       default: true,
+    },
+    // Cumulative proctoring risk (sum of ProctorFlag weights).
+    riskScore: {
+      type: Number,
+      default: 0,
+    },
+    // Media-proctoring session state (camera/mic/screen tier).
+    mediaProctoring: {
+      consentGivenAt: { type: Date },
+      identityPhotoKey: { type: String, default: null },
+      cameraActive: { type: Boolean, default: false },
+      lastSnapshotAt: { type: Date },
     },
   },
   { timestamps: true }
