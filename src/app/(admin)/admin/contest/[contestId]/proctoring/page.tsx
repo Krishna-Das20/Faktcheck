@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import {
   ShieldCheck, ArrowLeft, AlertTriangle, User, Clock, RefreshCw, Camera,
-  CheckCircle, XCircle,
+  CheckCircle, XCircle, Code,
 } from "lucide-react";
 
 interface Candidate {
@@ -159,9 +159,18 @@ export default function ProctoringReviewPage() {
               </p>
             </div>
           </div>
-          <button onClick={fetchOverview} className="p-2 rounded-lg" title="Refresh" style={{ color: "var(--primary)" }}>
-            <RefreshCw className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push(`/admin/contest/${contestId}/similarity`)}
+              className="px-3 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2"
+              style={{ background: "var(--background-secondary)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            >
+              <Code className="w-4 h-4" /> Code Similarity
+            </button>
+            <button onClick={fetchOverview} className="p-2 rounded-lg" title="Refresh" style={{ color: "var(--primary)" }}>
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {stats && (
