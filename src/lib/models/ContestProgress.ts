@@ -64,6 +64,12 @@ export interface IContestProgress extends Document {
     cameraActive: boolean;
     lastSnapshotAt?: Date;
   };
+  reviewDecision: {
+    status: "PENDING" | "CLEARED" | "CONFIRMED" | "VOIDED";
+    reviewedBy?: mongoose.Types.ObjectId | null;
+    reviewedAt?: Date | null;
+    note?: string | null;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,6 +179,17 @@ const contestProgressSchema = new Schema<IContestProgress>(
       identityPhotoKey: { type: String, default: null },
       cameraActive: { type: Boolean, default: false },
       lastSnapshotAt: { type: Date },
+    },
+    // Human reviewer decision on the proctoring evidence.
+    reviewDecision: {
+      status: {
+        type: String,
+        enum: ["PENDING", "CLEARED", "CONFIRMED", "VOIDED"],
+        default: "PENDING",
+      },
+      reviewedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      reviewedAt: { type: Date, default: null },
+      note: { type: String, default: null },
     },
   },
   { timestamps: true }

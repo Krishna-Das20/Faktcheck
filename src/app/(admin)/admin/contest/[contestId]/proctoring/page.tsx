@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import {
   ShieldCheck, ArrowLeft, AlertTriangle, User, Clock, RefreshCw, Camera,
+  CheckCircle, XCircle,
 } from "lucide-react";
 
 interface Candidate {
@@ -18,7 +19,14 @@ interface Candidate {
   submittedAt: string | null;
   cameraActive: boolean;
   identityPhotoKey: string | null;
+  reviewStatus: "PENDING" | "CLEARED" | "CONFIRMED" | "VOIDED";
 }
+
+const DECISION_BADGE: Record<string, { label: string; color: string }> = {
+  CLEARED: { label: "Cleared", color: "#22C55E" },
+  CONFIRMED: { label: "Confirmed", color: "#F97316" },
+  VOIDED: { label: "Voided", color: "#EF4444" },
+};
 
 interface FlagItem {
   _id: string;
@@ -77,6 +85,36 @@ export default function ProctoringReviewPage() {
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
+
+  const [deciding, setDeciding] = useState(false);
+
+  const submitDecision = async (userId: string, decision: "CLEARED" | "CONFIRMED" | "VOIDED") => {
+    setDeciding(true);
+    try {
+      const res = await fetch(`/api/proctor/${contestId}/review/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Decision recorded");
+        // Reflect in the open session + overview list
+        setSession((prev: any) =>
+          prev ? { ...prev, session: { ...prev.session, reviewDecision: data.reviewDecision } } : prev
+        );
+        setCandidates((prev) =>
+          prev.map((c) => (c.user?._id === userId ? { ...c, reviewStatus: decision } : c))
+        );
+      } else {
+        toast.error(data.message || "Failed to record decision");
+      }
+    } catch {
+      toast.error("Failed to record decision");
+    } finally {
+      setDeciding(false);
+    }
+  };
 
   const openSession = async (userId: string) => {
     if (selected === userId) {
@@ -174,6 +212,9 @@ export default function ProctoringReviewPage() {
                       <div className="text-lg font-bold" style={{ color: band.color }}>{c.riskScore}</div>
                       <div className="text-xs" style={{ color: "var(--foreground-secondary)" }}>{band.label} · {c.flagCount} flags</div>
                     </div>
+                    {DECISION_BADGE[c.reviewStatus] && (
+                      <span className="text-xs px-2 py-1 rounded-lg flex-shrink-0" style={{ background: `${DECISION_BADGE[c.reviewStatus].color}22`, color: DECISION_BADGE[c.reviewStatus].color }}>{DECISION_BADGE[c.reviewStatus].label}</span>
+                    )}
                     {c.terminationReason === "MALPRACTICE" && (
                       <span className="text-xs px-2 py-1 rounded-lg flex-shrink-0" style={{ background: "rgba(239,68,68,0.15)", color: "#EF4444" }}>Terminated</span>
                     )}
@@ -187,6 +228,25 @@ export default function ProctoringReviewPage() {
                         </div>
                       ) : session ? (
                         <div className="space-y-4">
+                          {/* Reviewer decision */}
+                          <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg" style={{ background: "var(--background-card)", border: "1px solid var(--border)" }}>
+                            <span className="text-sm mr-1" style={{ color: "var(--foreground-secondary)" }}>Decision:</span>
+                            <button disabled={deciding} onClick={() => uid && submitDecision(uid, "CLEARED")} className="text-xs px-3 py-1.5 rounded-lg inline-flex items-center gap-1 disabled:opacity-40" style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
+                              <CheckCircle className="w-3.5 h-3.5" /> Clear
+                            </button>
+                            <button disabled={deciding} onClick={() => uid && submitDecision(uid, "CONFIRMED")} className="text-xs px-3 py-1.5 rounded-lg inline-flex items-center gap-1 disabled:opacity-40" style={{ background: "rgba(249,115,22,0.15)", color: "#F97316" }}>
+                              <AlertTriangle className="w-3.5 h-3.5" /> Confirm violation
+                            </button>
+                            <button disabled={deciding} onClick={() => uid && confirm("Void this attempt? Their score will be set to zero (record kept for audit).") && submitDecision(uid, "VOIDED")} className="text-xs px-3 py-1.5 rounded-lg inline-flex items-center gap-1 disabled:opacity-40" style={{ background: "rgba(239,68,68,0.15)", color: "#EF4444" }}>
+                              <XCircle className="w-3.5 h-3.5" /> Void attempt
+                            </button>
+                            {session.session?.reviewDecision?.status && session.session.reviewDecision.status !== "PENDING" && DECISION_BADGE[session.session.reviewDecision.status] && (
+                              <span className="text-xs ml-auto px-2 py-1 rounded-lg" style={{ background: `${DECISION_BADGE[session.session.reviewDecision.status].color}22`, color: DECISION_BADGE[session.session.reviewDecision.status].color }}>
+                                {DECISION_BADGE[session.session.reviewDecision.status].label}
+                              </span>
+                            )}
+                          </div>
+
                           {session.session?.identityPhotoUrl && (
                             <div className="flex items-center gap-3">
                               {/* eslint-disable-next-line @next/next/no-img-element */}

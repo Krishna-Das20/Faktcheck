@@ -65,6 +65,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         identityPhotoUrl: getSignedEvidenceUrl(mp.identityPhotoKey),
         cameraActive: mp.cameraActive || false,
         lastSnapshotAt: mp.lastSnapshotAt || null,
+        reviewDecision: (progress as any)?.reviewDecision || { status: "PENDING" },
       },
       timeline,
       thresholds: { warn: RISK_WARN_THRESHOLD, terminate: RISK_TERMINATE_THRESHOLD },

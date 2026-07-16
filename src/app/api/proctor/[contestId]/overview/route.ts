@@ -47,6 +47,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       submittedAt: p.submittedAt,
       cameraActive: p.mediaProctoring?.cameraActive || false,
       identityPhotoKey: p.mediaProctoring?.identityPhotoKey || null,
+      reviewStatus: p.reviewDecision?.status || "PENDING",
     }));
 
     const stats = {

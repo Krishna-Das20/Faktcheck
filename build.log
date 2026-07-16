@@ -6,15 +6,15 @@
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 8.2s
+✓ Compiled successfully in 6.6s
   Running TypeScript ...
-  Finished TypeScript in 11.7s ...
+  Finished TypeScript in 9.1s ...
   Collecting page data using 15 workers ...
   Generating static pages using 15 workers (0/55) ...
   Generating static pages using 15 workers (13/55) 
   Generating static pages using 15 workers (27/55) 
   Generating static pages using 15 workers (41/55) 
-✓ Generating static pages using 15 workers (55/55) in 520ms
+✓ Generating static pages using 15 workers (55/55) in 476ms
   Finalizing page optimization ...
 
 Route (app)
@@ -104,6 +104,7 @@ Route (app)
 ├ ƒ /api/proctor/[contestId]/flag
 ├ ƒ /api/proctor/[contestId]/identity
 ├ ƒ /api/proctor/[contestId]/overview
+├ ƒ /api/proctor/[contestId]/review/[userId]
 ├ ƒ /api/proctor/[contestId]/session/[userId]
 ├ ƒ /api/proctor/[contestId]/snapshot
 ├ ƒ /api/results/[resultId]
