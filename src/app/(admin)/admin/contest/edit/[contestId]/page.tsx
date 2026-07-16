@@ -45,6 +45,7 @@ export default function EditContestPage() {
             requireIdentityPhoto: c.mediaProctoring?.requireIdentityPhoto ?? true,
             recordSnapshots: c.mediaProctoring?.recordSnapshots ?? true,
             detectAudio: c.mediaProctoring?.detectAudio ?? false,
+            detectObjects: c.mediaProctoring?.detectObjects ?? false,
           },
         });
       } catch { toast.error("Failed to load contest"); router.push("/admin/dashboard"); }
@@ -221,6 +222,7 @@ export default function EditContestPage() {
                   ["requireCamera", "Require camera"],
                   ["requireIdentityPhoto", "Capture identity photo"],
                   ["recordSnapshots", "Store webcam snapshots"],
+                  ["detectObjects", "Detect phones / objects"],
                   ["detectAudio", "Detect background voices"],
                   ["requireScreen", "Require screen sharing"],
                 ] as const).map(([key, label]) => (

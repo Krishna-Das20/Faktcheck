@@ -39,6 +39,7 @@ export interface IContest extends Document {
     requireIdentityPhoto: boolean;
     recordSnapshots: boolean;
     detectAudio: boolean;
+    detectObjects: boolean;
   };
   totalMarks: number; // virtual
   createdAt: Date;
@@ -156,6 +157,7 @@ const contestSchema = new Schema<IContest>(
       requireIdentityPhoto: { type: Boolean, default: true },
       recordSnapshots: { type: Boolean, default: true },
       detectAudio: { type: Boolean, default: false },
+      detectObjects: { type: Boolean, default: false },
     },
   },
   {

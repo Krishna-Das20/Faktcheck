@@ -29,14 +29,31 @@ const NO_FACE_HOLD_MS = 4000;
 const MULTI_FACE_HOLD_MS = 2000;
 const CAMERA_LOST_HOLD_MS = 5000;
 
+// Object detection (COCO-SSD) — heavier, so run less often.
+const OBJECT_DETECT_INTERVAL_MS = 3000;
+const OBJECT_MIN_SCORE = 0.6;
+const OBJECT_REFLAG_COOLDOWN_MS = 15000;
+// COCO classes that indicate prohibited items in an exam.
+const PROHIBITED_OBJECTS = new Set(["cell phone", "book", "laptop", "tv", "remote"]);
+
+// Audio voice-activity detection (Web Audio RMS on the mic track).
+// Sustained energy above threshold for the hold window => a background-voice flag.
+const AUDIO_SAMPLE_MS = 500;
+const AUDIO_RMS_THRESHOLD = 22; // 0-255 scale; tune per environment
+const VOICE_HOLD_MS = 2500; // continuous speech before flagging
+const VOICE_REFLAG_COOLDOWN_MS = 10000;
+
 /**
  * ProctorMedia — on-device camera/screen proctoring.
  *
- * Runs entirely in the candidate's browser: MediaPipe face detection for
- * presence / multiple-face, adaptive webcam snapshots as evidence, and a
- * camera-loss heartbeat. Flags are POSTed to /api/proctor/[id]/flag; the
- * server owns the risk score and termination policy. Renders children
- * transparently (no visible self-view — the video element is off-screen).
+ * Runs entirely in the candidate's browser:
+ * - MediaPipe face detection (presence / multiple-face)
+ * - COCO-SSD object detection (phones / books) when detectObjects is on
+ * - Web Audio RMS voice-activity detection when detectAudio is on
+ * - adaptive webcam/screen snapshots as evidence + camera-loss heartbeat
+ * Flags are POSTed to /api/proctor/[id]/flag; the server owns the risk score
+ * and termination policy. Renders children transparently (no visible
+ * self-view — the media elements are off-screen).
  */
 export default function ProctorMedia({
   contestId,
@@ -55,6 +72,9 @@ export default function ProctorMedia({
   const noFaceSinceRef = useRef<number | null>(null);
   const multiFaceSinceRef = useRef<number | null>(null);
   const cameraLostSinceRef = useRef<number | null>(null);
+  const lastObjectFlagRef = useRef(0);
+  const voiceSinceRef = useRef<number | null>(null);
+  const lastVoiceFlagRef = useRef(0);
   const stoppedRef = useRef(false);
 
   // Send a flag; escalate snapshot cadence for a while afterwards.
@@ -145,8 +165,12 @@ export default function ProctorMedia({
     }
 
     let faceDetector: any = null;
+    let objectModel: any = null;
     let detectTimer: ReturnType<typeof setInterval> | null = null;
+    let objectTimer: ReturnType<typeof setInterval> | null = null;
     let snapshotTimer: ReturnType<typeof setInterval> | null = null;
+    let audioCtx: AudioContext | null = null;
+    let audioTimer: ReturnType<typeof setInterval> | null = null;
 
     // ── Load the face detector (best-effort; degrade gracefully) ──
     const initFaceDetection = async () => {
@@ -160,6 +184,90 @@ export default function ProctorMedia({
         });
       } catch (err) {
         console.warn("Face detection unavailable (model load failed):", err);
+      }
+    };
+
+    // ── Load the object detector (COCO-SSD, best-effort) ──
+    const initObjectDetection = async () => {
+      if (!config.detectObjects || !config.requireCamera) return;
+      try {
+        const tf = await import("@tensorflow/tfjs");
+        await tf.ready();
+        const cocoSsd = await import("@tensorflow-models/coco-ssd");
+        objectModel = await cocoSsd.load({ base: "lite_mobilenet_v2" });
+      } catch (err) {
+        console.warn("Object detection unavailable (model load failed):", err);
+      }
+    };
+
+    // ── Object-detection loop (phones / books in frame) ──
+    const runObjectDetection = async () => {
+      if (stoppedRef.current || !objectModel || video.videoWidth === 0) return;
+      try {
+        const predictions = await objectModel.detect(video);
+        const hit = predictions.find(
+          (p: any) => PROHIBITED_OBJECTS.has(p.class) && p.score >= OBJECT_MIN_SCORE
+        );
+        const now = Date.now();
+        if (hit && now - lastObjectFlagRef.current > OBJECT_REFLAG_COOLDOWN_MS) {
+          lastObjectFlagRef.current = now;
+          const key = await captureSnapshot(video, "webcam");
+          sendFlag("OBJECT_DETECTED", {
+            details: `Detected: ${hit.class}`,
+            confidence: Math.min(hit.score, 1),
+            evidenceKey: key || undefined,
+          });
+        }
+      } catch {
+        /* transient detect error — ignore this tick */
+      }
+    };
+
+    // ── Audio voice-activity detection (Web Audio RMS) ──
+    const initAudioDetection = () => {
+      if (!config.detectAudio || !cameraStream) return;
+      const audioTracks = cameraStream.getAudioTracks();
+      if (audioTracks.length === 0) return;
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        audioCtx = new AudioCtx();
+        const source = audioCtx.createMediaStreamSource(cameraStream);
+        // High-pass to suppress low-frequency room rumble / hum
+        const highpass = audioCtx.createBiquadFilter();
+        highpass.type = "highpass";
+        highpass.frequency.value = 150;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(highpass);
+        highpass.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        audioTimer = setInterval(() => {
+          if (stoppedRef.current) return;
+          analyser.getByteFrequencyData(data);
+          const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length);
+          const now = Date.now();
+          if (rms > AUDIO_RMS_THRESHOLD) {
+            voiceSinceRef.current = voiceSinceRef.current ?? now;
+            const sustained = now - voiceSinceRef.current;
+            if (
+              sustained > VOICE_HOLD_MS &&
+              now - lastVoiceFlagRef.current > VOICE_REFLAG_COOLDOWN_MS
+            ) {
+              lastVoiceFlagRef.current = now;
+              sendFlag("VOICE_DETECTED", {
+                details: `Sustained background voice (${Math.round(sustained / 1000)}s)`,
+                confidence: 0.6,
+                durationMs: sustained,
+              });
+              voiceSinceRef.current = now;
+            }
+          } else {
+            voiceSinceRef.current = null;
+          }
+        }, AUDIO_SAMPLE_MS);
+      } catch (err) {
+        console.warn("Audio detection unavailable:", err);
       }
     };
 
@@ -243,18 +351,25 @@ export default function ProctorMedia({
     initFaceDetection().then(() => {
       detectTimer = setInterval(runDetection, DETECT_INTERVAL_MS);
     });
+    initObjectDetection().then(() => {
+      if (objectModel) objectTimer = setInterval(runObjectDetection, OBJECT_DETECT_INTERVAL_MS);
+    });
+    initAudioDetection();
     // Snapshot ticker checks frequently but only uploads on the adaptive cadence
     snapshotTimer = setInterval(runSnapshots, 1000);
 
     return () => {
       stoppedRef.current = true;
       if (detectTimer) clearInterval(detectTimer);
+      if (objectTimer) clearInterval(objectTimer);
       if (snapshotTimer) clearInterval(snapshotTimer);
+      if (audioTimer) clearInterval(audioTimer);
       try {
         faceDetector?.close?.();
       } catch {
         /* ignore */
       }
+      audioCtx?.close().catch(() => {});
       cameraStream?.getTracks().forEach((t) => t.stop());
       screenStream?.getTracks().forEach((t) => t.stop());
       video.remove();

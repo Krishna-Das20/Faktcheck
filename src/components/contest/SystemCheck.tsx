@@ -15,6 +15,7 @@ export interface MediaProctoringConfig {
   requireIdentityPhoto: boolean;
   recordSnapshots: boolean;
   detectAudio: boolean;
+  detectObjects: boolean;
 }
 
 interface SystemCheckProps {

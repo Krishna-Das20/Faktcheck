@@ -49,6 +49,7 @@ function CreateContestContent() {
       requireIdentityPhoto: true,
       recordSnapshots: true,
       detectAudio: false,
+      detectObjects: false,
     },
   });
   const [loading, setLoading] = useState(false);
@@ -326,6 +327,7 @@ function CreateContestContent() {
                   ["requireCamera", "Require camera"],
                   ["requireIdentityPhoto", "Capture identity photo"],
                   ["recordSnapshots", "Store webcam snapshots"],
+                  ["detectObjects", "Detect phones / objects"],
                   ["detectAudio", "Detect background voices"],
                   ["requireScreen", "Require screen sharing"],
                 ] as const).map(([key, label]) => (

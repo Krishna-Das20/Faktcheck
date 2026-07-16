@@ -75,6 +75,7 @@ export const createContestSchema = z.object({
     requireIdentityPhoto: z.boolean().optional(),
     recordSnapshots: z.boolean().optional(),
     detectAudio: z.boolean().optional(),
+    detectObjects: z.boolean().optional(),
   }).optional(),
 });
 
